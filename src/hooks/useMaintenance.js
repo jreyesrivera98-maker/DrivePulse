@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useUniqueChannelName } from "../lib/realtimeChannel";
 
 /**
  * Mantenimientos: lectura en vivo + CRUD completo. El CRUD está
@@ -29,18 +30,20 @@ export function useMaintenance() {
     setLoading(false);
   }, []);
 
+  const channelName = useUniqueChannelName("maintenance-realtime");
+
   useEffect(() => {
     refetch();
 
     const channel = supabase
-      .channel("maintenance-realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "maintenance" }, () => refetch())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, channelName]);
 
   const createMaintenance = useCallback(async (payload) => {
     const { error } = await supabase.from("maintenance").insert(payload);

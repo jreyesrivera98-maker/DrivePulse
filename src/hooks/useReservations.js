@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useUniqueChannelName } from "../lib/realtimeChannel";
 import { addDays, todayISO } from "../lib/dateUtils";
 
 /**
@@ -38,18 +39,20 @@ export function useReservations() {
     setLoading(false);
   }, []);
 
+  const channelName = useUniqueChannelName("reservations-realtime");
+
   useEffect(() => {
     refetch();
 
     const channel = supabase
-      .channel("reservations-realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "reservations" }, () => refetch())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, channelName]);
 
   /** true si [start, end] se empalma con alguna reserva existente de ese vehículo. */
   const hasOverlap = useCallback(

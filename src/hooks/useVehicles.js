@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useUniqueChannelName } from "../lib/realtimeChannel";
 
 export const STATUS_META = {
   disponible: { label: "Disponible", dot: "#22c55e", bg: "#dcfce7", text: "#166534" },
@@ -30,18 +31,20 @@ export function useVehicles() {
     setLoading(false);
   }, []);
 
+  const channelName = useUniqueChannelName("vehicles-realtime");
+
   useEffect(() => {
     refetch();
 
     const channel = supabase
-      .channel("vehicles-realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "vehicles" }, () => refetch())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, channelName]);
 
   return { vehicles, loading, error, refetch };
 }

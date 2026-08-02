@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, MapPin } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
@@ -19,6 +19,8 @@ export default function VehiculoLanding() {
   const [activeReservation, setActiveReservation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const channelName = useRef(`vehiculo-landing-${id}-${Math.random().toString(36).slice(2)}`).current;
 
   useEffect(() => {
     let active = true;
@@ -56,7 +58,7 @@ export default function VehiculoLanding() {
     // la landing abierta (por ejemplo, otro colaborador hace check-in),
     // se refleja sin recargar.
     const channel = supabase
-      .channel(`vehiculo-landing-${id}`)
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "vehicles", filter: `id=eq.${id}` }, load)
       .subscribe();
 
@@ -64,7 +66,7 @@ export default function VehiculoLanding() {
       active = false;
       supabase.removeChannel(channel);
     };
-  }, [id]);
+  }, [id, channelName]);
 
   if (loading) {
     return (

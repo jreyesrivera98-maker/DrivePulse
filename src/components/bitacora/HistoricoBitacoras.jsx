@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Download, Eye, ShieldCheck, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "../../lib/supabaseClient";
@@ -27,14 +27,16 @@ export default function HistoricoBitacoras({ vehicles, toast }) {
     setLoading(false);
   }, []);
 
+  const channelName = useRef(`historico-bitacoras-${Math.random().toString(36).slice(2)}`).current;
+
   useEffect(() => {
     load();
     const channel = supabase
-      .channel("historico-bitacoras")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "bitacoras" }, load)
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [load]);
+  }, [load, channelName]);
 
   const filtered = filterVehicle ? rows.filter((r) => r.vehicle_id === filterVehicle) : rows;
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useUniqueChannelName } from "../lib/realtimeChannel";
 
 /**
  * Inspecciones mensuales. RLS ("admin CRUD completo inspecciones",
@@ -20,18 +21,20 @@ export function useInspections() {
     setLoading(false);
   }, []);
 
+  const channelName = useUniqueChannelName("inspections-realtime");
+
   useEffect(() => {
     refetch();
 
     const channel = supabase
-      .channel("inspections-realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "inspections" }, () => refetch())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, channelName]);
 
   const createInspection = useCallback(async (payload) => {
     const {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useUniqueChannelName } from "../lib/realtimeChannel";
 
 /**
  * Trae bitácoras reales. Por ahora solo lectura (el registro completo
@@ -27,18 +28,20 @@ export function useBitacoras() {
     setLoading(false);
   }, []);
 
+  const channelName = useUniqueChannelName("bitacoras-realtime");
+
   useEffect(() => {
     refetch();
 
     const channel = supabase
-      .channel("bitacoras-realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "bitacoras" }, () => refetch())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, channelName]);
 
   return { bitacoras, loading, error, refetch };
 }

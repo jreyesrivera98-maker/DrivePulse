@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useUniqueChannelName } from "../lib/realtimeChannel";
 
 export function useProfiles() {
   const [profiles, setProfiles] = useState([]);
@@ -11,18 +12,20 @@ export function useProfiles() {
     setLoading(false);
   }, []);
 
+  const channelName = useUniqueChannelName("profiles-realtime");
+
   useEffect(() => {
     refetch();
 
     const channel = supabase
-      .channel("profiles-realtime")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refetch())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, channelName]);
 
   /** Solo administrador puede escribir (reforzado por RLS del lado servidor). */
   const updateRole = useCallback(async (id, role) => {
