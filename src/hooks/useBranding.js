@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 export const DEFAULT_BRANDING = {
@@ -20,22 +20,23 @@ export function useBranding() {
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    supabase
-      .from("branding_settings")
-      .select("*")
-      .eq("id", 1)
-      .single()
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (!error && data) setBranding(data);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+  const refetch = useCallback(async () => {
+    const { data, error } = await supabase.from("branding_settings").select("*").eq("id", 1).single();
+    if (!error && data) setBranding(data);
+    setLoading(false);
   }, []);
 
-  return { branding, loading };
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  /** Solo administrador puede escribir (RLS lo refuerza igual del lado servidor). */
+  const updateBranding = useCallback(async (payload) => {
+    const { data, error } = await supabase.from("branding_settings").update(payload).eq("id", 1).select().single();
+    if (error) throw error;
+    setBranding(data);
+    return data;
+  }, []);
+
+  return { branding, loading, refetch, updateBranding };
 }

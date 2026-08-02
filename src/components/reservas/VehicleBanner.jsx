@@ -1,4 +1,5 @@
-import { Gauge, Fuel, Building2 } from "lucide-react";
+import { Gauge, Fuel, Building2, QrCode } from "lucide-react";
+import { Link } from "react-router-dom";
 import Badge from "../ui/Badge";
 
 const FUEL_TO_PCT = { "Vacío": 0.04, "1/4": 0.25, "1/2": 0.5, "3/4": 0.75, "Lleno": 1 };
@@ -50,17 +51,22 @@ export default function VehicleBanner({ vehicle }) {
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {DOC_ITEMS.map((d) => (
-            <span
-              key={d.key}
-              className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full font-medium border ${
-                vehicle[d.key] ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
-              }`}
-            >
-              {d.label}
-            </span>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {DOC_ITEMS.map((d) => (
+              <span
+                key={d.key}
+                className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full font-medium border ${
+                  vehicle[d.key] ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}
+              >
+                {d.label}
+              </span>
+            ))}
+          </div>
+          <Link to={`/vehiculo/${vehicle.id}`} className="text-[11px] font-semibold text-teal-600 hover:underline flex items-center gap-1 shrink-0">
+            <QrCode size={12} /> Ver código QR
+          </Link>
         </div>
       </div>
     </div>

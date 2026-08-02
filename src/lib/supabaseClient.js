@@ -43,6 +43,20 @@ export async function signOut() {
 }
 
 /**
+ * Envía un correo de "restablecer contraseña" a un colaborador ya
+ * activo. Reutiliza el mismo evento PASSWORD_RECOVERY y la misma
+ * pantalla /set-password que el flujo de invitación — no requiere
+ * Edge Function ni service_role key, se puede llamar directo desde
+ * el cliente con la anon key.
+ */
+export async function resetPasswordForEmail(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/set-password`,
+  });
+  if (error) throw error;
+}
+
+/**
  * Define la contraseña del usuario invitado/en recuperación.
  * Debe llamarse solo después del evento PASSWORD_RECOVERY (ver useAuth/SetPassword).
  */

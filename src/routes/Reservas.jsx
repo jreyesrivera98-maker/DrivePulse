@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useVehicles } from "../hooks/useVehicles";
 import { useReservations } from "../hooks/useReservations";
 import { useProfiles } from "../hooks/useProfiles";
+import { useSelectedVehicle } from "../contexts/SelectedVehicleContext";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import WeeklyCalendar from "../components/reservas/WeeklyCalendar";
 import VehicleBanner from "../components/reservas/VehicleBanner";
@@ -12,12 +13,24 @@ export default function Reservas({ profile }) {
   const { vehicles, loading: loadingVehicles, error: vehiclesError } = useVehicles();
   const { reservations, loading: loadingReservations, error: reservationsError, createReservation, moveReservation } = useReservations();
   const { profiles } = useProfiles();
+  const { selectedVehicleId, setSelectedVehicleId, newReservationRequest } = useSelectedVehicle();
   const { toasts, toast, remove } = useToasts();
 
   const isAdmin = profile?.role === "administrador";
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedVehicleId, setSelectedVehicleId] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Escucha la señal del botón "+ Nueva Reserva" del Panel de Flotilla
+  // (o del botón ⚡ configurado como "Nueva Reserva Rápida"), sin
+  // reaccionar al valor inicial en el primer render.
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    setModalOpen(true);
+  }, [newReservationRequest]);
 
   const activeVehicleId = selectedVehicleId || vehicles[0]?.id || null;
   const selectedVehicle = vehicles.find((v) => v.id === activeVehicleId);

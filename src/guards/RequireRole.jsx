@@ -20,6 +20,10 @@ export default function RequireRole({ session, profile, allow, fallback = "/rese
     return null;
   }
 
+  if (profile.status === "inactivo") {
+    return <Navigate to="/login" replace state={{ deactivated: true }} />;
+  }
+
   if (!allow.includes(profile.role)) {
     return <Navigate to={fallback} replace />;
   }

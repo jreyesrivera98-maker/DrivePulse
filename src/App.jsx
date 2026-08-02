@@ -3,13 +3,20 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "./hooks/useAuth";
 import { useBranding } from "./hooks/useBranding";
+import { SelectedVehicleProvider } from "./contexts/SelectedVehicleContext";
 import RequireRole from "./guards/RequireRole";
 import PulseMark from "./components/ui/PulseMark";
 import Shell from "./components/layout/Shell";
 
 import Login from "./routes/Login";
 import SetPassword from "./routes/SetPassword";
+import Dashboard from "./routes/Dashboard";
 import Reservas from "./routes/Reservas";
+import Bitacora from "./routes/Bitacora";
+import Mantenimientos from "./routes/Mantenimientos";
+import Configuracion from "./routes/Configuracion";
+import Inspecciones from "./routes/Inspecciones";
+import VehiculoLanding from "./routes/VehiculoLanding";
 
 /**
  * Enrutamiento real de DrivePulse.
@@ -43,7 +50,8 @@ export default function App() {
   }
 
   return (
-    <Routes>
+    <SelectedVehicleProvider>
+      <Routes>
       <Route path="/login" element={<Login session={session} profile={profile} />} />
 
       <Route
@@ -51,7 +59,7 @@ export default function App() {
         element={
           <RequireRole session={session} profile={profile} allow={["administrador"]}>
             <Shell profile={profile} branding={branding}>
-              <Placeholder title="Dashboard" note="Siguiente en la migración — solo administrador." />
+              <Dashboard />
             </Shell>
           </RequireRole>
         }
@@ -73,7 +81,7 @@ export default function App() {
         element={
           <RequireRole session={session} profile={profile} allow={["administrador", "trabajador"]}>
             <Shell profile={profile} branding={branding}>
-              <Placeholder title="Bitácora Diaria" />
+              <Bitacora profile={profile} />
             </Shell>
           </RequireRole>
         }
@@ -84,7 +92,7 @@ export default function App() {
         element={
           <RequireRole session={session} profile={profile} allow={["administrador", "trabajador"]}>
             <Shell profile={profile} branding={branding}>
-              <Placeholder title="Landing de Vehículo (QR)" />
+              <VehiculoLanding />
             </Shell>
           </RequireRole>
         }
@@ -95,7 +103,7 @@ export default function App() {
         element={
           <RequireRole session={session} profile={profile} allow={["administrador"]}>
             <Shell profile={profile} branding={branding}>
-              <Placeholder title="Mantenimientos" note="Solo administrador." />
+              <Mantenimientos />
             </Shell>
           </RequireRole>
         }
@@ -106,7 +114,7 @@ export default function App() {
         element={
           <RequireRole session={session} profile={profile} allow={["administrador"]}>
             <Shell profile={profile} branding={branding}>
-              <Placeholder title="Inspecciones" note="Solo administrador." />
+              <Inspecciones />
             </Shell>
           </RequireRole>
         }
@@ -117,7 +125,7 @@ export default function App() {
         element={
           <RequireRole session={session} profile={profile} allow={["administrador"]}>
             <Shell profile={profile} branding={branding}>
-              <Placeholder title="Configuración" note="Solo administrador." />
+              <Configuracion />
             </Shell>
           </RequireRole>
         }
@@ -133,6 +141,7 @@ export default function App() {
         }
       />
     </Routes>
+    </SelectedVehicleProvider>
   );
 }
 

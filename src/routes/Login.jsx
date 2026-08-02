@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertTriangle } from "lucide-react";
-import { signIn } from "../lib/supabaseClient";
+import { signIn, signOut } from "../lib/supabaseClient";
 import { useBranding } from "../hooks/useBranding";
 import PulseMark from "../components/ui/PulseMark";
 import { Field, inputCls } from "../components/ui/formPrimitives";
@@ -14,12 +14,18 @@ export default function Login({ profile, session }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(location.state?.deactivated ? "Esta cuenta fue desactivada por un administrador. Contacta a RH si crees que es un error." : "");
   const [loading, setLoading] = useState(false);
 
   // Si ya hay sesión y perfil activo, no tiene caso quedarse en /login.
+  // Si el perfil está desactivado, se cierra la sesión aquí mismo en
+  // vez de dejarlo entrar solo porque su contraseña sigue siendo válida.
   useEffect(() => {
     if (session && profile) {
+      if (profile.status === "inactivo") {
+        signOut();
+        return;
+      }
       const from = location.state?.from;
       const home = profile.role === "administrador" ? "/dashboard" : "/reservas";
       navigate(from || home, { replace: true });
