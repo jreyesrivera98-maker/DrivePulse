@@ -7,6 +7,7 @@ import { useSelectedVehicle } from "../contexts/SelectedVehicleContext";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import { Field, inputCls } from "../components/ui/formPrimitives";
 import DamageMap from "../components/bitacora/DamageMap";
+import IncidenciaFotos from "../components/bitacora/IncidenciaFotos";
 import SignaturePad from "../components/bitacora/SignaturePad";
 import VoucherOCR from "../components/bitacora/VoucherOCR";
 import HistoricoBitacoras from "../components/bitacora/HistoricoBitacoras";
@@ -37,6 +38,7 @@ export default function Bitacora({ profile }) {
   const [combustibleRegreso, setCombustibleRegreso] = useState("Lleno");
   const [limpieza, setLimpieza] = useState(true);
   const [incidencias, setIncidencias] = useState("");
+  const [incidenciaFotos, setIncidenciaFotos] = useState([]);
   const [danios, setDanios] = useState([]);
   const [firma, setFirma] = useState(null);
   const [conformidad, setConformidad] = useState(false);
@@ -78,6 +80,7 @@ export default function Bitacora({ profile }) {
     setFirma(null);
     setConformidad(false);
     setIncidencias("");
+    setIncidenciaFotos([]);
     setVoucher({ attached: false });
     setKmInicial("");
     setKmFinal("");
@@ -125,6 +128,7 @@ export default function Bitacora({ profile }) {
         p_combustible_regreso: tipo === "regreso" ? combustibleRegreso : null,
         p_limpieza: limpieza,
         p_incidencias: incidencias,
+        p_incidencia_fotos: incidenciaFotos,
         p_danios: danios,
         p_firma_url: firmaUrl,
         p_gps_lat: gps?.lat ?? null,
@@ -224,6 +228,9 @@ export default function Bitacora({ profile }) {
 
           <Field label="Incidencias / observaciones">
             <textarea className={inputCls} rows={2} value={incidencias} onChange={(e) => setIncidencias(e.target.value)} placeholder="Describe cualquier incidencia relevante..." />
+            {vehicleId && (
+              <IncidenciaFotos fotos={incidenciaFotos} onChange={setIncidenciaFotos} vehicleId={vehicleId} toast={toast} />
+            )}
           </Field>
 
           {vehicleId && (

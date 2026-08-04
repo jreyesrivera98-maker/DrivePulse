@@ -94,6 +94,15 @@ export default function BitacoraDetailModal({ open, onClose, bitacora }) {
             <div className="mb-5">
               <p className="text-xs font-semibold text-slate-500 mb-1">Incidencias</p>
               <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{bitacora.incidencias}</p>
+              {Array.isArray(bitacora.incidencia_fotos) && bitacora.incidencia_fotos.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {bitacora.incidencia_fotos.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer">
+                      <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-slate-200" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

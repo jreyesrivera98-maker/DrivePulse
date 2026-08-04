@@ -59,6 +59,19 @@ export default function AuditViewerModal({ open, onClose, record, vehicle, userN
             </div>
           )}
 
+          {Array.isArray(snapshot.incidencia_fotos) && snapshot.incidencia_fotos.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-slate-500 mb-1">Fotos de incidencias</p>
+              <div className="flex flex-wrap gap-2">
+                {snapshot.incidencia_fotos.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noreferrer">
+                    <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-slate-200" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mb-4">
             <p className="text-xs font-semibold text-slate-500 mb-1">Hash de integridad (SHA-256)</p>
             <p className="font-mono text-[11px] bg-slate-900 text-teal-300 rounded-lg px-3 py-2 break-all">{record.hash}</p>
