@@ -252,9 +252,9 @@ export default function Configuracion() {
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                        {u.status === "activo" && (
+                        {(u.status === "activo" || u.status === "invitado") && (
                           <button onClick={() => sendReset(u.email)} className="text-slate-400 text-[11px] font-semibold hover:text-amber-600 mr-3">
-                            Restablecer contraseña
+                            {u.status === "invitado" ? "Reenviar invitación" : "Restablecer contraseña"}
                           </button>
                         )}
                         {u.status !== "inactivo" ? (
