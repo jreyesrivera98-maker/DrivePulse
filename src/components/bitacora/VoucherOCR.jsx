@@ -29,6 +29,8 @@ export default function VoucherOCR({ voucher, setVoucher, vehicleId, toast }) {
         litros,
         monto,
         estacion: estaciones[Math.floor(Math.random() * estaciones.length)],
+        folio: `F-${Math.floor(Math.random() * 900000 + 100000)}`,
+        ocrConfidence: "Media",
         fecha: new Date().toISOString().slice(0, 16),
       });
       toast("Ticket subido. Datos extraídos por OCR (simulado) — verifica antes de guardar.");
@@ -59,6 +61,10 @@ export default function VoucherOCR({ voucher, setVoucher, vehicleId, toast }) {
           <div>
             <label className="text-[10px] text-slate-400">Monto total ($)</label>
             <input className={inputCls} value={voucher.monto} onChange={(e) => setVoucher({ ...voucher, monto: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-400">Folio</label>
+            <input className={inputCls} value={voucher.folio || ""} onChange={(e) => setVoucher({ ...voucher, folio: e.target.value })} />
           </div>
           <div className="col-span-2">
             <label className="text-[10px] text-slate-400">Estación de servicio</label>

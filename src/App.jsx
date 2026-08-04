@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
@@ -8,15 +9,25 @@ import RequireRole from "./guards/RequireRole";
 import PulseMark from "./components/ui/PulseMark";
 import Shell from "./components/layout/Shell";
 
+// Login y SetPassword se cargan de inmediato: son la primera pantalla
+// que ve cualquiera sin sesión, no tiene caso diferirlas.
 import Login from "./routes/Login";
 import SetPassword from "./routes/SetPassword";
-import Dashboard from "./routes/Dashboard";
-import Reservas from "./routes/Reservas";
-import Bitacora from "./routes/Bitacora";
-import Mantenimientos from "./routes/Mantenimientos";
-import Configuracion from "./routes/Configuracion";
-import Inspecciones from "./routes/Inspecciones";
-import VehiculoLanding from "./routes/VehiculoLanding";
+
+// El resto de las rutas se cargan bajo demanda (code-splitting), para
+// que el bundle inicial no incluya recharts, xlsx ni qrcode.react
+// hasta que la persona realmente navegue a la pantalla que los usa.
+const Dashboard = lazy(() => import("./routes/Dashboard"));
+const Reservas = lazy(() => import("./routes/Reservas"));
+const Bitacora = lazy(() => import("./routes/Bitacora"));
+const Mantenimientos = lazy(() => import("./routes/Mantenimientos"));
+const Configuracion = lazy(() => import("./routes/Configuracion"));
+const Inspecciones = lazy(() => import("./routes/Inspecciones"));
+const VehiculoLanding = lazy(() => import("./routes/VehiculoLanding"));
+const Combustible = lazy(() => import("./routes/Combustible"));
+const Historico = lazy(() => import("./routes/Historico"));
+const Auditoria = lazy(() => import("./routes/Auditoria"));
+const Gps = lazy(() => import("./routes/Gps"));
 
 /**
  * Enrutamiento real de DrivePulse.
@@ -51,6 +62,7 @@ export default function App() {
 
   return (
     <SelectedVehicleProvider>
+      <Suspense fallback={<RouteLoader />}>
       <Routes>
       <Route path="/login" element={<Login session={session} profile={profile} />} />
 
@@ -82,6 +94,17 @@ export default function App() {
           <RequireRole session={session} profile={profile} allow={["administrador", "trabajador"]}>
             <Shell profile={profile} branding={branding}>
               <Bitacora profile={profile} />
+            </Shell>
+          </RequireRole>
+        }
+      />
+
+      <Route
+        path="/combustible"
+        element={
+          <RequireRole session={session} profile={profile} allow={["administrador", "trabajador"]}>
+            <Shell profile={profile} branding={branding}>
+              <Combustible profile={profile} />
             </Shell>
           </RequireRole>
         }
@@ -121,6 +144,39 @@ export default function App() {
       />
 
       <Route
+        path="/historico"
+        element={
+          <RequireRole session={session} profile={profile} allow={["administrador"]}>
+            <Shell profile={profile} branding={branding}>
+              <Historico />
+            </Shell>
+          </RequireRole>
+        }
+      />
+
+      <Route
+        path="/auditoria"
+        element={
+          <RequireRole session={session} profile={profile} allow={["administrador"]}>
+            <Shell profile={profile} branding={branding}>
+              <Auditoria />
+            </Shell>
+          </RequireRole>
+        }
+      />
+
+      <Route
+        path="/gps"
+        element={
+          <RequireRole session={session} profile={profile} allow={["administrador"]}>
+            <Shell profile={profile} branding={branding}>
+              <Gps />
+            </Shell>
+          </RequireRole>
+        }
+      />
+
+      <Route
         path="/configuracion"
         element={
           <RequireRole session={session} profile={profile} allow={["administrador"]}>
@@ -141,17 +197,15 @@ export default function App() {
         }
       />
     </Routes>
+      </Suspense>
     </SelectedVehicleProvider>
   );
 }
 
-function Placeholder({ title, note }) {
+function RouteLoader() {
   return (
-    <div className="min-h-full flex flex-col items-center justify-center gap-2 text-center px-4 py-24">
-      <h1 className="text-xl font-bold text-slate-800">{title}</h1>
-      <p className="text-sm text-slate-500 max-w-sm">
-        {note || "Sesión y rol verificados por Supabase. Vista visual pendiente de migrar desde reference/DrivePulse.jsx."}
-      </p>
+    <div className="min-h-screen bg-dp-surface flex items-center justify-center">
+      <Loader2 className="animate-spin text-teal-600" size={22} />
     </div>
   );
 }

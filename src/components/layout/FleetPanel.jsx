@@ -29,7 +29,7 @@ export default function FleetPanel() {
   };
 
   return (
-    <div className="w-[320px] shrink-0 border-r border-slate-200 bg-white flex flex-col h-full">
+    <div className="hidden md:flex w-[320px] shrink-0 border-r border-slate-200 bg-white flex-col h-full">
       <div className="p-4 border-b border-slate-100">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-slate-800 text-sm">Flotilla</h3>

@@ -130,6 +130,7 @@ export default function Bitacora({ profile }) {
         p_gps_lat: gps?.lat ?? null,
         p_gps_lng: gps?.lng ?? null,
         p_voucher: voucher.attached ? voucher : null,
+        p_user_agent: navigator.userAgent,
       });
 
       if (error) throw error;

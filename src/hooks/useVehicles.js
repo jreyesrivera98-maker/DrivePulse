@@ -46,5 +46,20 @@ export function useVehicles() {
     };
   }, [refetch, channelName]);
 
-  return { vehicles, loading, error, refetch };
+  const createVehicle = useCallback(async (payload) => {
+    const { error } = await supabase.from("vehicles").insert(payload);
+    if (error) throw error;
+  }, []);
+
+  const updateVehicle = useCallback(async (id, payload) => {
+    const { error } = await supabase.from("vehicles").update(payload).eq("id", id);
+    if (error) throw error;
+  }, []);
+
+  const deleteVehicle = useCallback(async (id) => {
+    const { error } = await supabase.from("vehicles").delete().eq("id", id);
+    if (error) throw error;
+  }, []);
+
+  return { vehicles, loading, error, refetch, createVehicle, updateVehicle, deleteVehicle };
 }

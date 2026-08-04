@@ -6,11 +6,15 @@ import { useProfiles } from "../hooks/useProfiles";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import { Field, inputCls } from "../components/ui/formPrimitives";
 import InviteUserModal from "../components/configuracion/InviteUserModal";
+import VehiculosTab from "../components/configuracion/VehiculosTab";
+import GpsIntegrationTab from "../components/configuracion/GpsIntegrationTab";
 
 const TABS = [
+  { key: "vehiculos", label: "Vehículos" },
   { key: "branding", label: "Marca y Login" },
   { key: "lightning", label: "Botón Rápido" },
   { key: "usuarios", label: "Usuarios" },
+  { key: "gps", label: "GPS" },
 ];
 
 const LIGHTNING_OPTIONS = [
@@ -25,7 +29,7 @@ export default function Configuracion() {
   const { profiles, loading: loadingProfiles, updateRole, toggleStatus } = useProfiles();
   const { toasts, toast, remove } = useToasts();
 
-  const [tab, setTab] = useState("branding");
+  const [tab, setTab] = useState("vehiculos");
   const [form, setForm] = useState(branding);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -128,6 +132,10 @@ export default function Configuracion() {
           </button>
         ))}
       </div>
+
+      {tab === "vehiculos" && <VehiculosTab toast={toast} />}
+
+      {tab === "gps" && <GpsIntegrationTab toast={toast} />}
 
       {tab === "branding" && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6">

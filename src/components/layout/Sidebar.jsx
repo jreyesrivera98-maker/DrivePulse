@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Calendar, ClipboardList, Wrench, ShieldCheck, Settings, Zap, LogOut } from "lucide-react";
+import { LayoutDashboard, Calendar, ClipboardList, Fuel, Wrench, ShieldCheck, FolderClock, MapPin, Settings, Zap, LogOut } from "lucide-react";
 import { signOut } from "../../lib/supabaseClient";
 import { useSelectedVehicle } from "../../contexts/SelectedVehicleContext";
 import PulseMark from "../ui/PulseMark";
@@ -8,14 +8,19 @@ const NAV_ADMIN = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/reservas", label: "Calendario", icon: Calendar },
   { path: "/bitacora", label: "Bitácora", icon: ClipboardList },
+  { path: "/combustible", label: "Combustible", icon: Fuel },
   { path: "/mantenimientos", label: "Mantenimientos", icon: Wrench },
   { path: "/inspecciones", label: "Inspecciones", icon: ShieldCheck },
+  { path: "/historico", label: "Histórico", icon: FolderClock },
+  { path: "/auditoria", label: "Auditoría", icon: ShieldCheck },
+  { path: "/gps", label: "GPS", icon: MapPin },
   { path: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
 const NAV_WORKER = [
   { path: "/reservas", label: "Calendario", icon: Calendar },
   { path: "/bitacora", label: "Bitácora", icon: ClipboardList },
+  { path: "/combustible", label: "Combustible", icon: Fuel },
 ];
 
 export default function Sidebar({ profile, branding }) {
@@ -42,7 +47,7 @@ export default function Sidebar({ profile, branding }) {
   };
 
   return (
-    <div className="w-[76px] shrink-0 bg-dp-black flex flex-col items-center py-5 gap-1">
+    <div className="hidden md:flex w-[76px] shrink-0 bg-dp-black flex-col items-center py-5 gap-1">
       <div className="mb-6">
         <PulseMark size={38} logoUrl={branding.logo_url} />
       </div>
