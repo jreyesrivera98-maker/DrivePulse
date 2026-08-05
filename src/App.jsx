@@ -56,7 +56,14 @@ export default function App() {
 
   // Un enlace de invitación/recuperación tiene prioridad absoluta
   // sobre cualquier ruta que haya pedido el navegador.
-  if (passwordRecovery) {
+  //
+  // No basta con escuchar el evento PASSWORD_RECOVERY: el enlace de
+  // invitación de Supabase autentica a la persona directamente (sin
+  // ese evento), así que la fuente de verdad real es nuestro propio
+  // perfil — si status sigue en 'invitado', todavía no ha creado
+  // contraseña, sin importar cómo haya llegado a tener sesión.
+  const needsPasswordSetup = passwordRecovery || (session && profile && profile.status === "invitado");
+  if (needsPasswordSetup) {
     return <SetPassword profile={profile} reloadProfile={reloadProfile} onDone={completePasswordRecovery} />;
   }
 
