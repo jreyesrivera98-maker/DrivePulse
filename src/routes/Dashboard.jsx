@@ -1,26 +1,82 @@
 import { useMemo, useState, useEffect } from "react";
-import { Car, CheckCircle2, Activity, Wrench, DollarSign, ClipboardList, Loader2, Calendar, Fuel } from "lucide-react";
+import { Car, Wrench, Calendar as CalendarIcon, Fuel, DollarSign } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+
 import { useVehicles, STATUS_META } from "../hooks/useVehicles";
 import { useBitacoras } from "../hooks/useBitacoras";
 import { useMaintenance } from "../hooks/useMaintenance";
 import { useFuelVouchers } from "../hooks/useFuelVouchers";
+import { useReservations } from "../hooks/useReservations";
+import { useInspections } from "../hooks/useInspections";
+import { useFleetAlerts } from "../hooks/useFleetAlerts";
 import { useSelectedVehicle } from "../contexts/SelectedVehicleContext";
+import { useBranding } from "../hooks/useBranding";
 import { supabase } from "../lib/supabaseClient";
-import { fmtDate, todayISO } from "../lib/dateUtils";
+import { fmtDate, todayISO, addDays } from "../lib/dateUtils";
+
 import VehicleBanner from "../components/reservas/VehicleBanner";
+import Skeleton from "../components/ui/Skeleton";
+import KpiCard from "../components/dashboard/KpiCard";
+import DashboardAlertsCard from "../components/dashboard/DashboardAlertsCard";
+import ActivityFeed from "../components/dashboard/ActivityFeed";
+import CostsPanel from "../components/dashboard/CostsPanel";
+import UpcomingEvents from "../components/dashboard/UpcomingEvents";
+import CriticalVehiclesTable from "../components/dashboard/CriticalVehiclesTable";
+import QuickActions from "../components/dashboard/QuickActions";
 
 const STATUS_COLORS = { disponible: "#22c55e", en_uso: "#3b82f6", reservado: "#eab308", mantenimiento: "#ef4444" };
 
-export default function Dashboard() {
+/** Suma `valueField` de `records` agrupado por día, para los últimos `days` días. */
+function bucketByDay(records, dateField, valueField, days = 14) {
+  const buckets = {};
+  for (let i = days - 1; i >= 0; i--) buckets[addDays(todayISO(), -i)] = 0;
+  records.forEach((r) => {
+    const raw = r[dateField];
+    if (!raw) return;
+    const day = raw.slice(0, 10);
+    if (day in buckets) buckets[day] += Number(valueField ? r[valueField] : 1) || 0;
+  });
+  return Object.values(buckets);
+}
+
+function isThisMonth(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+}
+function isLastMonth(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return d.getMonth() === last.getMonth() && d.getFullYear() === last.getFullYear();
+}
+function pctDelta(current, previous) {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return ((current - previous) / previous) * 100;
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
+export default function Dashboard({ profile }) {
   const { vehicles, loading: loadingVehicles, error: vehiclesError } = useVehicles();
   const { bitacoras, loading: loadingBitacoras, error: bitacorasError } = useBitacoras();
   const { maintenance, loading: loadingMaintenance, error: maintenanceError } = useMaintenance();
-  const { vouchers } = useFuelVouchers();
+  const { vouchers, loading: loadingVouchers } = useFuelVouchers();
+  const { reservations, loading: loadingReservations } = useReservations();
+  const { inspections, loading: loadingInspections } = useInspections();
+  const { branding } = useBranding();
   const { selectedVehicleId } = useSelectedVehicle();
 
-  const [activeReservation, setActiveReservation] = useState(null);
+  const alerts = useFleetAlerts({ vehicles, reservations, maintenance });
 
+  const [activeReservation, setActiveReservation] = useState(null);
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
 
   useEffect(() => {
@@ -42,7 +98,7 @@ export default function Dashboard() {
     };
   }, [selectedVehicle]);
 
-  const loading = loadingVehicles || loadingBitacoras || loadingMaintenance;
+  const loading = loadingVehicles || loadingBitacoras || loadingMaintenance || loadingVouchers || loadingReservations || loadingInspections;
   const loadError = vehiclesError || bitacorasError || maintenanceError;
 
   const statusCounts = useMemo(() => {
@@ -53,22 +109,37 @@ export default function Dashboard() {
     return c;
   }, [vehicles]);
 
-  const { costPerKm } = useMemo(() => {
-    const km = bitacoras.reduce((s, b) => s + Math.max(0, (b.km_final || 0) - (b.km_inicial || 0)), 0);
-    const maintCost = maintenance.reduce((s, m) => s + (Number(m.costo) || 0), 0);
-    const fuelCost = vouchers.reduce((s, v) => s + (Number(v.monto) || 0), 0);
-    const totalCost = maintCost + fuelCost;
-    return { costPerKm: km > 0 ? (totalCost / km).toFixed(2) : "0.00" };
-  }, [bitacoras, maintenance, vouchers]);
+  const reservasHoy = useMemo(() => {
+    const today = todayISO();
+    return reservations.filter((r) => r.start_date <= today && r.end_date >= today).length;
+  }, [reservations]);
 
-  const kpis = [
-    { label: "Vehículos totales", value: vehicles.length, icon: Car, color: "bg-slate-100 text-slate-700" },
-    { label: "Disponibles", value: statusCounts.disponible, icon: CheckCircle2, color: "bg-emerald-50 text-emerald-600" },
-    { label: "En uso", value: statusCounts.en_uso, icon: Activity, color: "bg-blue-50 text-blue-600" },
-    { label: "En mantenimiento", value: statusCounts.mantenimiento, icon: Wrench, color: "bg-rose-50 text-rose-600" },
-    { label: "Costo por KM", value: `$${costPerKm}`, icon: DollarSign, color: "bg-amber-50 text-amber-600" },
-    { label: "Bitácoras registradas", value: bitacoras.length, icon: ClipboardList, color: "bg-teal-50 text-teal-600" },
-  ];
+  const monthlyKpis = useMemo(() => {
+    const fuelThisMonth = vouchers.filter((v) => isThisMonth(v.created_at));
+    const fuelLastMonth = vouchers.filter((v) => isLastMonth(v.created_at));
+    const litrosMes = fuelThisMonth.reduce((s, v) => s + (Number(v.litros) || 0), 0);
+    const litrosMesAnterior = fuelLastMonth.reduce((s, v) => s + (Number(v.litros) || 0), 0);
+
+    const maintThisMonth = maintenance.filter((m) => isThisMonth(m.fecha));
+    const maintLastMonth = maintenance.filter((m) => isLastMonth(m.fecha));
+    const costoOperativoMes = maintThisMonth.reduce((s, m) => s + (Number(m.costo) || 0), 0) + fuelThisMonth.reduce((s, v) => s + (Number(v.monto) || 0), 0);
+    const costoOperativoMesAnterior = maintLastMonth.reduce((s, m) => s + (Number(m.costo) || 0), 0) + fuelLastMonth.reduce((s, v) => s + (Number(v.monto) || 0), 0);
+
+    return {
+      litrosMes,
+      deltaLitros: pctDelta(litrosMes, litrosMesAnterior),
+      costoOperativoMes,
+      deltaCosto: pctDelta(costoOperativoMes, costoOperativoMesAnterior),
+    };
+  }, [vouchers, maintenance]);
+
+  const sparklineReservas = useMemo(() => bucketByDay(reservations, "created_at", null, 14), [reservations]);
+  const sparklineLitros = useMemo(() => bucketByDay(vouchers, "created_at", "litros", 14), [vouchers]);
+  const sparklineCosto = useMemo(() => {
+    const maintDaily = bucketByDay(maintenance, "fecha", "costo", 14);
+    const fuelDaily = bucketByDay(vouchers, "created_at", "monto", 14);
+    return maintDaily.map((v, i) => v + (fuelDaily[i] || 0));
+  }, [maintenance, vouchers]);
 
   const pieData = Object.entries(statusCounts)
     .filter(([, v]) => v > 0)
@@ -96,14 +167,6 @@ export default function Dashboard() {
     return { litros, monto, rendimiento };
   }, [vouchers, bitacoras, selectedVehicle]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full py-24 text-slate-400 gap-2">
-        <Loader2 size={18} className="animate-spin" /> Cargando panel general…
-      </div>
-    );
-  }
-
   if (loadError) {
     return (
       <div className="max-w-lg mx-auto mt-16 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl p-4">
@@ -112,32 +175,79 @@ export default function Dashboard() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <Skeleton className="h-16 w-full" />
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
+        </div>
+        <div className="grid lg:grid-cols-2 gap-5">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Panel General</h1>
-        <p className="text-sm text-slate-500">Resumen operativo de la flotilla en tiempo real.</p>
+      {/* Encabezado */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">
+            {greeting()}, {profile?.name?.split(" ")[0] || ""}
+          </h1>
+          <p className="text-sm text-slate-500">
+            {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} ·{" "}
+            {new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} · {branding.name}
+          </p>
+        </div>
       </div>
 
+      <QuickActions />
+
+      {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        {kpis.map((k) => (
-          <div key={k.label} className="bg-white rounded-2xl border border-slate-200 p-4">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${k.color}`}>
-              <k.icon size={16} />
-            </div>
-            <p className="text-xl font-bold text-slate-900">{k.value}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{k.label}</p>
-          </div>
-        ))}
+        <KpiCard label="Vehículos activos" value={statusCounts.disponible + statusCounts.en_uso} icon={Car} color="bg-emerald-50 text-emerald-600" linkTo="/reservas" />
+        <KpiCard label="En mantenimiento" value={statusCounts.mantenimiento} icon={Wrench} color="bg-rose-50 text-rose-600" linkTo="/mantenimientos" />
+        <KpiCard label="Reservados" value={statusCounts.reservado} icon={CalendarIcon} color="bg-amber-50 text-amber-600" linkTo="/reservas" />
+        <KpiCard label="Reservas de hoy" value={reservasHoy} icon={CalendarIcon} color="bg-blue-50 text-blue-600" trendData={sparklineReservas} linkTo="/reservas" />
+        <KpiCard
+          label="Combustible este mes"
+          value={`${monthlyKpis.litrosMes.toLocaleString(undefined, { maximumFractionDigits: 0 })} L`}
+          icon={Fuel}
+          color="bg-teal-50 text-teal-600"
+          trendData={sparklineLitros}
+          deltaPct={monthlyKpis.deltaLitros}
+          linkTo="/combustible"
+        />
+        <KpiCard
+          label="Costo operativo mensual"
+          value={`$${monthlyKpis.costoOperativoMes.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          icon={DollarSign}
+          color="bg-slate-100 text-slate-700"
+          trendData={sparklineCosto}
+          deltaPct={monthlyKpis.deltaCosto}
+          linkTo="/mantenimientos"
+        />
       </div>
 
+      {/* Alertas + Costos */}
+      <div className="grid lg:grid-cols-2 gap-5">
+        <DashboardAlertsCard alerts={alerts} />
+        <CostsPanel maintenance={maintenance} vouchers={vouchers} vehicleCount={vehicles.length} />
+      </div>
+
+      {/* Vehículo seleccionado */}
       {selectedVehicle && (
         <div className="space-y-4">
           <VehicleBanner vehicle={selectedVehicle} />
-
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs font-semibold text-slate-600 mb-3 flex items-center gap-1.5"><Calendar size={14} className="text-teal-600" /> Reserva activa</p>
+              <p className="text-xs font-semibold text-slate-600 mb-3 flex items-center gap-1.5">
+                <CalendarIcon size={14} className="text-teal-600" /> Reserva activa
+              </p>
               {activeReservation ? (
                 <div className="text-xs text-slate-600 space-y-1">
                   <p>Colaborador: <strong className="text-slate-800">{activeReservation.profiles?.name || "—"}</strong></p>
@@ -149,9 +259,10 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-400">Sin reserva activa para esta unidad.</p>
               )}
             </div>
-
             <div className="bg-white rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs font-semibold text-slate-600 mb-3 flex items-center gap-1.5"><Fuel size={14} className="text-teal-600" /> Combustible de la unidad</p>
+              <p className="text-xs font-semibold text-slate-600 mb-3 flex items-center gap-1.5">
+                <Fuel size={14} className="text-teal-600" /> Combustible de la unidad
+              </p>
               {vehicleFuelKpis && (
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
@@ -173,6 +284,13 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Actividad reciente + Próximos eventos */}
+      <div className="grid lg:grid-cols-2 gap-5">
+        <ActivityFeed reservations={reservations} maintenance={maintenance} vouchers={vouchers} bitacoras={bitacoras} inspections={inspections} vehicles={vehicles} />
+        <UpcomingEvents maintenance={maintenance} reservations={reservations} vehicles={vehicles} />
+      </div>
+
+      {/* Estado de flotilla */}
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
           <h3 className="font-semibold text-slate-800 text-sm mb-4">Distribución de estatus de flotilla</h3>
@@ -190,7 +308,6 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </div>
-
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
           <h3 className="font-semibold text-slate-800 text-sm mb-4">Vehículos por categoría</h3>
           {categoryData.length === 0 ? (
@@ -208,24 +325,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 text-sm mb-4">Últimos mantenimientos</h3>
-        <div className="space-y-3">
-          {maintenance.slice(0, 5).map((m) => {
-            const v = vehicles.find((x) => x.id === m.vehicle_id);
-            return (
-              <div key={m.id} className="flex items-center justify-between text-xs border-b border-slate-50 pb-2 last:border-0">
-                <div>
-                  <p className="font-medium text-slate-700">{v?.identifier || v?.plate} · {m.tipo}</p>
-                  <p className="text-slate-400">{fmtDate(m.fecha)}</p>
-                </div>
-                <span className="font-semibold text-slate-600">${Number(m.costo).toLocaleString()}</span>
-              </div>
-            );
-          })}
-          {maintenance.length === 0 && <p className="text-xs text-slate-400">Sin registros de mantenimiento aún.</p>}
-        </div>
-      </div>
+      {/* Vehículos críticos */}
+      <CriticalVehiclesTable vehicles={vehicles} maintenance={maintenance} vouchers={vouchers} />
     </div>
   );
 }

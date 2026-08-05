@@ -78,7 +78,7 @@ export default function App() {
         element={
           <RequireRole session={session} profile={profile} allow={["administrador"]}>
             <Shell profile={profile} branding={branding}>
-              <Dashboard />
+              <Dashboard profile={profile} />
             </Shell>
           </RequireRole>
         }
