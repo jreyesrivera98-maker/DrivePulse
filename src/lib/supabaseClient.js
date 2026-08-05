@@ -65,8 +65,17 @@ export async function setNewPassword(password) {
   if (error) throw error;
 
   // Marca el perfil como activo una vez que ya tiene contraseña.
+  // Si esto falla (ej. por una policy de RLS mal configurada), NO
+  // debe fallar en silencio: sin esto, la persona queda atrapada en
+  // /set-password para siempre porque la app nunca ve status='activo'.
   if (data?.user?.id) {
-    await supabase.from("profiles").update({ status: "activo" }).eq("id", data.user.id);
+    const { error: profileError } = await supabase.from("profiles").update({ status: "activo" }).eq("id", data.user.id);
+    if (profileError) {
+      throw new Error(
+        `Tu contraseña se guardó, pero no se pudo activar tu cuenta (${profileError.message}). ` +
+          "Contacta a tu administrador para que verifique tu perfil."
+      );
+    }
   }
   return data;
 }
