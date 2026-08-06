@@ -6,6 +6,7 @@ import { useSelectedVehicle } from "../contexts/SelectedVehicleContext";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import WeeklyCalendar from "../components/reservas/WeeklyCalendar";
 import VehicleBanner from "../components/reservas/VehicleBanner";
+import MobileVehicleSwiper from "../components/reservas/MobileVehicleSwiper";
 import NewReservationModal from "../components/reservas/NewReservationModal";
 import { Loader2 } from "lucide-react";
 
@@ -80,6 +81,7 @@ export default function Reservas({ profile }) {
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <ToastStack toasts={toasts} remove={remove} />
 
+      <MobileVehicleSwiper vehicles={vehicles} />
       {selectedVehicle && <VehicleBanner vehicle={selectedVehicle} />}
 
       <WeeklyCalendar
