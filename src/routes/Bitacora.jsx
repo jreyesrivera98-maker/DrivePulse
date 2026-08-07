@@ -4,6 +4,7 @@ import { Save, PenTool, Loader2, Wifi, WifiOff, LogOut, LogIn, User } from "luci
 import { supabase, uploadFile, BUCKETS } from "../lib/supabaseClient";
 import { useVehicles } from "../hooks/useVehicles";
 import { useOpenBitacora } from "../hooks/useOpenBitacora";
+import { useMyOpenBitacora } from "../hooks/useMyOpenBitacora";
 import { useSelectedVehicle } from "../contexts/SelectedVehicleContext";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import { Field, inputCls } from "../components/ui/formPrimitives";
@@ -56,10 +57,23 @@ export default function Bitacora({ profile }) {
 
   const [vehicleId, setVehicleId] = useState(location.state?.vehicleId || "");
   const { selectedVehicleId } = useSelectedVehicle();
+  const { myOpenVehicleId, loading: loadingMyOpen } = useMyOpenBitacora();
+
+  // Prioridad para elegir el vehículo al entrar: 1) llegó desde la
+  // landing QR con un vehículo específico, 2) tiene un viaje propio
+  // abierto en cualquier unidad (lo lleva directo a cerrarlo, aunque
+  // haya cerrado la app a medio viaje), 3) el primero de la lista.
+  useEffect(() => {
+    if (location.state?.vehicleId) return;
+    if (loadingMyOpen) return;
+    if (myOpenVehicleId && !vehicleId) {
+      setVehicleId(myOpenVehicleId);
+    }
+  }, [myOpenVehicleId, loadingMyOpen, location.state, vehicleId]);
 
   useEffect(() => {
-    if (!vehicleId && vehicles.length > 0) setVehicleId(vehicles[0].id);
-  }, [vehicles, vehicleId]);
+    if (!vehicleId && vehicles.length > 0 && !loadingMyOpen && !myOpenVehicleId) setVehicleId(vehicles[0].id);
+  }, [vehicles, vehicleId, loadingMyOpen, myOpenVehicleId]);
 
   // Si el usuario toca otra unidad en el Panel de Flotilla / carrusel
   // móvil mientras está en esta página, el formulario la adopta.
@@ -70,7 +84,7 @@ export default function Bitacora({ profile }) {
   const vehicle = vehicles.find((v) => v.id === vehicleId);
   const { openBitacora, loading: loadingOpen, refetch: refetchOpen } = useOpenBitacora(vehicleId);
 
-  if (loadingVehicles) {
+  if (loadingVehicles || loadingMyOpen) {
     return (
       <div className="flex items-center justify-center h-full py-24 text-slate-400 gap-2">
         <Loader2 size={18} className="animate-spin" /> Cargando vehículos…

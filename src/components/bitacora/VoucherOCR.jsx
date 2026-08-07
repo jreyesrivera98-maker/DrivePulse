@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScanLine, Loader2, Upload } from "lucide-react";
+import { ScanLine, Loader2, Upload, PenLine } from "lucide-react";
 import { uploadFile, BUCKETS } from "../../lib/supabaseClient";
 
 const inputCls =
@@ -41,17 +41,35 @@ export default function VoucherOCR({ voucher, setVoucher, vehicleId, toast }) {
     }
   };
 
+  const captureManual = () => {
+    setVoucher({
+      attached: true,
+      imagenUrl: null,
+      litros: "",
+      monto: "",
+      estacion: "",
+      folio: "",
+      ocrConfidence: "Manual",
+      fecha: new Date().toISOString().slice(0, 16),
+    });
+  };
+
   return (
     <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
       <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
         <ScanLine size={14} className="text-teal-600" /> Voucher de combustible (OCR)
       </p>
       {!voucher.attached ? (
-        <label className="w-full border-2 border-dashed border-slate-300 rounded-lg py-4 text-xs text-slate-500 flex flex-col items-center gap-1.5 hover:border-teal-400 hover:text-teal-600 transition cursor-pointer">
-          {processing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-          {processing ? "Subiendo y extrayendo datos..." : "Adjuntar foto del ticket / voucher"}
-          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFile(e.target.files[0])} disabled={processing} />
-        </label>
+        <>
+          <label className="w-full border-2 border-dashed border-slate-300 rounded-lg py-4 text-xs text-slate-500 flex flex-col items-center gap-1.5 hover:border-teal-400 hover:text-teal-600 transition cursor-pointer">
+            {processing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+            {processing ? "Subiendo y extrayendo datos..." : "Adjuntar foto del ticket / voucher"}
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFile(e.target.files[0])} disabled={processing} />
+          </label>
+          <button type="button" onClick={captureManual} className="w-full text-[11px] text-slate-500 hover:text-teal-600 font-medium mt-2 flex items-center justify-center gap-1.5">
+            <PenLine size={12} /> No tengo foto — capturar datos manualmente
+          </button>
+        </>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           <div>

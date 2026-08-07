@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Save, UserPlus, Zap, Calendar, ClipboardList, QrCode, EyeOff, Loader2, Trash2 } from "lucide-react";
+import { Save, UserPlus, Zap, Calendar, ClipboardList, QrCode, EyeOff, Loader2, Trash2, KeyRound, Edit2, Check, X } from "lucide-react";
 import { uploadFile, BUCKETS, resetPasswordForEmail } from "../lib/supabaseClient";
 import { useBranding } from "../hooks/useBranding";
 import { useProfiles } from "../hooks/useProfiles";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import { Field, inputCls } from "../components/ui/formPrimitives";
 import InviteUserModal from "../components/configuracion/InviteUserModal";
+import SetPasswordManualModal from "../components/configuracion/SetPasswordManualModal";
 import VehiculosTab from "../components/configuracion/VehiculosTab";
 import GpsIntegrationTab from "../components/configuracion/GpsIntegrationTab";
 
@@ -26,7 +27,7 @@ const LIGHTNING_OPTIONS = [
 
 export default function Configuracion() {
   const { branding, loading: loadingBranding, updateBranding } = useBranding();
-  const { profiles, loading: loadingProfiles, updateRole, toggleStatus } = useProfiles();
+  const { profiles, loading: loadingProfiles, updateRole, toggleStatus, updateName } = useProfiles();
   const { toasts, toast, remove } = useToasts();
 
   const [tab, setTab] = useState("vehiculos");
@@ -36,6 +37,9 @@ export default function Configuracion() {
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [busyUserId, setBusyUserId] = useState(null);
+  const [passwordModalUser, setPasswordModalUser] = useState(null);
+  const [editingNameId, setEditingNameId] = useState(null);
+  const [nameDraft, setNameDraft] = useState("");
 
   useEffect(() => setForm(branding), [branding]);
 
@@ -101,6 +105,17 @@ export default function Configuracion() {
       toast(`Correo de restablecimiento enviado a ${email}.`);
     } catch (err) {
       toast(err.message || "No se pudo enviar el correo.", "error");
+    }
+  };
+
+  const saveName = async (id) => {
+    if (!nameDraft.trim()) return;
+    try {
+      await updateName(id, nameDraft.trim());
+      toast("Nombre actualizado.");
+      setEditingNameId(null);
+    } catch (err) {
+      toast(err.message || "No se pudo actualizar el nombre.", "error");
     }
   };
 
@@ -232,9 +247,40 @@ export default function Configuracion() {
               <tbody>
                 {profiles.map((u) => {
                   const busy = busyUserId === u.id;
+                  const editingName = editingNameId === u.id;
                   return (
                     <tr key={u.id} className="border-t border-slate-50">
-                      <td className="px-3 py-2.5 font-medium text-slate-700">{u.name}</td>
+                      <td className="px-3 py-2.5 font-medium text-slate-700">
+                        {editingName ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              autoFocus
+                              value={nameDraft}
+                              onChange={(e) => setNameDraft(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && saveName(u.id)}
+                              className="text-xs border border-teal-300 rounded-lg px-2 py-1 w-32"
+                            />
+                            <button onClick={() => saveName(u.id)} className="text-emerald-600 hover:text-emerald-700">
+                              <Check size={14} />
+                            </button>
+                            <button onClick={() => setEditingNameId(null)} className="text-slate-400 hover:text-rose-600">
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingNameId(u.id);
+                              setNameDraft(u.name);
+                            }}
+                            className="flex items-center gap-1.5 group"
+                            title="Editar nombre"
+                          >
+                            {u.name}
+                            <Edit2 size={11} className="text-slate-300 group-hover:text-teal-600" />
+                          </button>
+                        )}
+                      </td>
                       <td className="px-3 py-2.5 text-slate-500">{u.email}</td>
                       <td className="px-3 py-2.5">
                         <select value={u.role} disabled={busy} onChange={(e) => changeRole(u.id, e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1">
@@ -257,6 +303,9 @@ export default function Configuracion() {
                             {u.status === "invitado" ? "Reenviar invitación" : "Restablecer contraseña"}
                           </button>
                         )}
+                        <button onClick={() => setPasswordModalUser(u)} className="text-slate-400 text-[11px] font-semibold hover:text-teal-600 mr-3 inline-flex items-center gap-1">
+                          <KeyRound size={11} /> Sin correo
+                        </button>
                         {u.status !== "inactivo" ? (
                           <button onClick={() => changeStatus(u.id, "inactivo")} disabled={busy} className="text-slate-400 hover:text-rose-600">
                             <Trash2 size={13} className="inline" />
@@ -277,6 +326,7 @@ export default function Configuracion() {
       )}
 
       <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} onInvited={(email) => toast(`Invitación enviada a ${email}.`)} />
+      <SetPasswordManualModal open={!!passwordModalUser} onClose={() => setPasswordModalUser(null)} user={passwordModalUser} toast={toast} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useVehicles } from "../hooks/useVehicles";
 import { useReservations } from "../hooks/useReservations";
+import { useBitacoras } from "../hooks/useBitacoras";
 import { useProfiles } from "../hooks/useProfiles";
 import { useSelectedVehicle } from "../contexts/SelectedVehicleContext";
 import { useToasts, ToastStack } from "../components/ui/Toast";
@@ -13,6 +14,7 @@ import { Loader2 } from "lucide-react";
 export default function Reservas({ profile }) {
   const { vehicles, loading: loadingVehicles, error: vehiclesError } = useVehicles();
   const { reservations, loading: loadingReservations, error: reservationsError, createReservation, moveReservation } = useReservations();
+  const { bitacoras } = useBitacoras();
   const { profiles } = useProfiles();
   const { selectedVehicleId, setSelectedVehicleId, newReservationRequest } = useSelectedVehicle();
   const { toasts, toast, remove } = useToasts();
@@ -87,6 +89,7 @@ export default function Reservas({ profile }) {
       <WeeklyCalendar
         vehicles={vehicles}
         reservations={reservations}
+        bitacoras={bitacoras}
         isAdmin={isAdmin}
         weekOffset={weekOffset}
         setWeekOffset={setWeekOffset}

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Filter, Plus } from "lucide-react";
 import { addDays, fmtShort, dayLabel, startOfWeek, todayISO } from "../../lib/dateUtils";
 
-export default function WeeklyCalendar({ vehicles, reservations, isAdmin, weekOffset, setWeekOffset, onDrop, onNewReservation }) {
+export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAdmin, weekOffset, setWeekOffset, onDrop, onNewReservation }) {
   const weekStart = addDays(startOfWeek(todayISO()), weekOffset * 7);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -40,6 +40,11 @@ export default function WeeklyCalendar({ vehicles, reservations, isAdmin, weekOf
           <p className="text-sm text-slate-500">
             {isAdmin ? "Arrastra una reserva para reprogramarla." : "Consulta la disponibilidad de la flotilla."}
           </p>
+          <div className="flex items-center gap-3 mt-1.5">
+            <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2.5 h-2.5 rounded-sm bg-amber-200 border border-amber-300" /> Reserva</span>
+            <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2.5 h-2.5 rounded-sm bg-blue-200 border border-blue-300" /> Viaje en curso</span>
+            <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2.5 h-2.5 rounded-sm bg-teal-200 border border-teal-300" /> Uso registrado</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setWeekOffset((w) => w - 1)} className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50">
@@ -111,6 +116,12 @@ export default function WeeklyCalendar({ vehicles, reservations, isAdmin, weekOf
               </div>
               {days.map((d) => {
                 const dayReservations = reservations.filter((r) => r.vehicle_id === v.id && d >= r.start_date && d <= r.end_date);
+                const dayUsage = (bitacoras || []).filter((b) => {
+                  if (b.vehicle_id !== v.id) return false;
+                  const start = b.created_at?.slice(0, 10);
+                  const end = b.closed_at ? b.closed_at.slice(0, 10) : todayISO();
+                  return start && d >= start && d <= end;
+                });
                 return (
                   <div
                     key={d}
@@ -123,12 +134,23 @@ export default function WeeklyCalendar({ vehicles, reservations, isAdmin, weekOf
                         key={r.id}
                         draggable={isAdmin}
                         onDragStart={() => setDragged(r.id)}
-                        title={`${r.profiles?.name || ""} · ${r.project || ""}`}
+                        title={`Reserva: ${r.profiles?.name || ""} · ${r.project || ""}`}
                         className={`text-[10px] rounded-md px-1.5 py-1 mb-1 font-medium truncate bg-amber-100 text-amber-800 border border-amber-200 ${
                           isAdmin ? "cursor-grab active:cursor-grabbing" : ""
                         }`}
                       >
                         {r.profiles?.name?.split(" ")[0] || "—"} · {r.destino || r.project || "Viaje"}
+                      </div>
+                    ))}
+                    {dayUsage.map((b) => (
+                      <div
+                        key={b.id}
+                        title={`Uso real: ${b.profiles?.name || ""} · ${b.proyecto || ""}${b.estado === "abierta" ? " · viaje en curso" : ""}`}
+                        className={`text-[10px] rounded-md px-1.5 py-1 mb-1 font-medium truncate border ${
+                          b.estado === "abierta" ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-teal-100 text-teal-800 border-teal-200"
+                        }`}
+                      >
+                        🚗 {b.profiles?.name?.split(" ")[0] || "—"}{b.estado === "abierta" ? " (en curso)" : ""}
                       </div>
                     ))}
                   </div>

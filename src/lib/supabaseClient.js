@@ -57,6 +57,20 @@ export async function resetPasswordForEmail(email) {
 }
 
 /**
+ * Asigna una contraseña directamente a un colaborador (respaldo
+ * cuando el correo no llega o el límite de envíos está agotado).
+ * Solo un administrador puede llamar esto — la Edge Function lo
+ * verifica de nuevo del lado del servidor.
+ */
+export async function setUserPassword(targetUserId, newPassword) {
+  const { data, error } = await supabase.functions.invoke("set-user-password", {
+    body: { targetUserId, newPassword },
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
  * Define la contraseña del usuario invitado/en recuperación.
  * Debe llamarse solo después del evento PASSWORD_RECOVERY (ver useAuth/SetPassword).
  */

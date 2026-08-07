@@ -38,5 +38,10 @@ export function useProfiles() {
     if (error) throw error;
   }, []);
 
-  return { profiles, loading, refetch, updateRole, toggleStatus };
+  const updateName = useCallback(async (id, name) => {
+    const { error } = await supabase.from("profiles").update({ name }).eq("id", id);
+    if (error) throw error;
+  }, []);
+
+  return { profiles, loading, refetch, updateRole, toggleStatus, updateName };
 }
