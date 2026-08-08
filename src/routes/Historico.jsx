@@ -30,7 +30,7 @@ export default function Historico() {
     setLoading(true);
     const { data, error } = await supabase
       .from("bitacoras")
-      .select("*, profiles(name), vehicles(plate, brand, model, identifier)")
+      .select("*, profiles!bitacoras_user_id_fkey(name), vehicles(plate, brand, model, identifier)")
       .order("created_at", { ascending: false })
       .limit(500);
     if (!error) setRows(data);

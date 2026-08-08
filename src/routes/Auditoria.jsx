@@ -29,7 +29,7 @@ export default function Auditoria() {
     setLoading(true);
     const { data, error } = await supabase
       .from("auditoria_logs")
-      .select("*, bitacoras(tipo, proyecto, km_inicial, km_final, vehicle_id, vehicles(plate, brand, model, identifier), profiles(name))")
+      .select("*, bitacoras(tipo, proyecto, km_inicial, km_final, vehicle_id, vehicles(plate, brand, model, identifier), profiles!bitacoras_user_id_fkey(name))")
       .order("created_at", { ascending: false })
       .limit(500);
     if (!error) setRows(data);

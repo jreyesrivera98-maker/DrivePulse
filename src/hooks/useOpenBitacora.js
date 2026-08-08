@@ -17,7 +17,7 @@ export function useOpenBitacora(vehicleId) {
     setLoading(true);
     const { data } = await supabase
       .from("bitacoras")
-      .select("*, profiles(name)")
+      .select("*, profiles!bitacoras_user_id_fkey(name)")
       .eq("vehicle_id", vehicleId)
       .eq("estado", "abierta")
       .maybeSingle();

@@ -15,7 +15,7 @@ export function useBitacoras() {
   const refetch = useCallback(async () => {
     const { data, error } = await supabase
       .from("bitacoras")
-      .select("*, profiles(name)")
+      .select("*, profiles!bitacoras_user_id_fkey(name)")
       .order("created_at", { ascending: false })
       .limit(200);
 
