@@ -8,6 +8,7 @@ import { useToasts, ToastStack } from "../components/ui/Toast";
 import WeeklyCalendar from "../components/reservas/WeeklyCalendar";
 import VehicleBanner from "../components/reservas/VehicleBanner";
 import MobileVehicleSwiper from "../components/reservas/MobileVehicleSwiper";
+import OpenTripCard from "../components/reservas/OpenTripCard";
 import NewReservationModal from "../components/reservas/NewReservationModal";
 import { Loader2 } from "lucide-react";
 
@@ -85,6 +86,7 @@ export default function Reservas({ profile }) {
 
       <MobileVehicleSwiper vehicles={vehicles} />
       {selectedVehicle && <VehicleBanner vehicle={selectedVehicle} />}
+      {isAdmin && selectedVehicle && <OpenTripCard vehicle={selectedVehicle} toast={toast} />}
 
       <WeeklyCalendar
         vehicles={vehicles}
