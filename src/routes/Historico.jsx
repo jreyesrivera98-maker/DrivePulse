@@ -90,12 +90,25 @@ export default function Historico() {
   };
 
   const remove_ = async (b) => {
-    if (!window.confirm("¿Eliminar esta bitácora? El registro de auditoría original se conserva, pero este registro de trabajo se borrará.")) return;
+    const isOpen = b.estado === "abierta";
+    const confirmMsg = isOpen
+      ? "Este viaje sigue ABIERTO. Si lo eliminas, el vehículo se corregirá automáticamente a \"Disponible\" (el registro de auditoría original se conserva). ¿Continuar?"
+      : "¿Eliminar esta bitácora? El registro de auditoría original se conserva, pero este registro de trabajo se borrará.";
+    if (!window.confirm(confirmMsg)) return;
+
     setDeletingId(b.id);
     try {
       const { error } = await supabase.from("bitacoras").delete().eq("id", b.id);
       if (error) throw error;
-      toast("Bitácora eliminada.");
+
+      // Sin esto, borrar un viaje abierto deja el vehículo atorado en
+      // "en_uso" para siempre, sin ninguna bitácora que lo respalde.
+      if (isOpen) {
+        await supabase.from("vehicles").update({ status: "disponible" }).eq("id", b.vehicle_id);
+        toast("Bitácora eliminada y vehículo corregido a Disponible.");
+      } else {
+        toast("Bitácora eliminada.");
+      }
     } catch (err) {
       toast(err.message || "No se pudo eliminar.", "error");
     } finally {

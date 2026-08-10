@@ -132,6 +132,11 @@ export default function VehicleModal({ open, onClose, onSave, editing }) {
               <select className={inputCls} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 {STATUSES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
               </select>
+              {form.status === "en_uso" && (
+                <p className="text-[10px] text-amber-600 mt-1">
+                  ⚠️ Cambiar esto a mano no crea un viaje en Bitácora. Úsalo solo para corregir una inconsistencia.
+                </p>
+              )}
             </Field>
           </div>
 
