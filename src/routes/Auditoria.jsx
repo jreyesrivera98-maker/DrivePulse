@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Download, Eye, ShieldCheck, Loader2 } from "lucide-react";
+import { Search, Download, Eye, ShieldCheck, Loader2, PenLine, EyeOff, RotateCcw } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabaseClient";
 import { useVehicles } from "../hooks/useVehicles";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import AuditViewerModal from "../components/bitacora/AuditViewerModal";
+import AuditActionModal from "../components/bitacora/AuditActionModal";
 
 function fmtDateTime(iso) {
   if (!iso) return "—";
@@ -23,7 +24,10 @@ export default function Auditoria() {
   const [q, setQ] = useState("");
   const [filterVehicle, setFilterVehicle] = useState("");
   const [filterTipo, setFilterTipo] = useState("");
+  const [showHidden, setShowHidden] = useState(false);
   const [viewing, setViewing] = useState(null);
+  const [actionModal, setActionModal] = useState(null);
+  const [restoringId, setRestoringId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,6 +50,7 @@ export default function Auditoria() {
   }, [load]);
 
   const filtered = rows.filter((r) => {
+    if (!showHidden && r.hidden_at) return false;
     const b = r.bitacoras;
     if (filterVehicle && b?.vehicle_id !== filterVehicle) return false;
     if (filterTipo && b?.tipo !== filterTipo) return false;
@@ -65,12 +70,27 @@ export default function Auditoria() {
       Proyecto: r.bitacoras?.proyecto || "—",
       KM_Recorrido: r.bitacoras?.km_final ? r.bitacoras.km_final - r.bitacoras.km_inicial : "",
       Hash: r.hash,
+      Corregido: r.corrected_at ? "Sí" : "No",
+      Oculto: r.hidden_at ? "Sí" : "No",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
     XLSX.writeFile(wb, "Auditoria_CajaNegra_DrivePulse.xlsx");
     toast("Auditoría exportada.");
+  };
+
+  const restore = async (r) => {
+    setRestoringId(r.id);
+    try {
+      const { error } = await supabase.rpc("admin_restore_audit_log", { p_log_id: r.id });
+      if (error) throw error;
+      toast("Registro restaurado.");
+    } catch (err) {
+      toast(err.message || "No se pudo restaurar.", "error");
+    } finally {
+      setRestoringId(null);
+    }
   };
 
   return (
@@ -80,14 +100,16 @@ export default function Auditoria() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2"><ShieldCheck size={20} className="text-teal-600" /> Auditoría — Caja Negra</h1>
-          <p className="text-sm text-slate-500">Registros forenses inmutables. No pueden editarse ni eliminarse.</p>
+          <p className="text-sm text-slate-500">
+            Registros forenses. El dato original nunca se edita ni se borra — solo se puede anotar una corrección u ocultar, siempre con rastro.
+          </p>
         </div>
         <button onClick={exportar} className="flex items-center gap-1.5 text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50">
           <Download size={14} /> Exportar a Excel
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-2">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Colaborador, proyecto, vehículo..." className="w-full rounded-lg border border-slate-200 pl-8 pr-3 py-2 text-xs" />
@@ -101,6 +123,10 @@ export default function Auditoria() {
           <option value="salida">Solo Salidas</option>
           <option value="regreso">Solo Regresos</option>
         </select>
+        <label className="flex items-center gap-1.5 text-xs text-slate-500 ml-auto">
+          <input type="checkbox" className="accent-teal-600" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
+          Mostrar ocultos
+        </label>
       </div>
 
       {loading ? (
@@ -124,18 +150,30 @@ export default function Auditoria() {
               {filtered.map((r) => {
                 const b = r.bitacoras;
                 return (
-                  <tr key={r.id} className="border-t border-slate-50 hover:bg-slate-50/50">
+                  <tr key={r.id} className={`border-t border-slate-50 hover:bg-slate-50/50 ${r.hidden_at ? "opacity-50" : ""}`}>
                     <td className="px-3 py-2.5 text-slate-500">{fmtDateTime(r.created_at)}</td>
                     <td className="px-3 py-2.5">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TIPO_COLOR[b?.tipo] || "bg-slate-100 text-slate-500"}`}>{TIPO_LABEL[b?.tipo] || "—"}</span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TIPO_COLOR[b?.tipo] || "bg-slate-100 text-slate-500"}`}>{TIPO_LABEL[b?.tipo] || "—"}</span>
+                        {r.corrected_at && <span title="Tiene corrección anotada"><PenLine size={11} className="text-teal-500" /></span>}
+                        {r.hidden_at && <span title="Oculto"><EyeOff size={11} className="text-amber-500" /></span>}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 font-medium text-slate-700">{b?.vehicles?.identifier || b?.vehicles?.plate || "—"}</td>
                     <td className="px-3 py-2.5 text-slate-600">{b?.profiles?.name || "—"}</td>
                     <td className="px-3 py-2.5 text-slate-600">{b?.proyecto || "—"}</td>
                     <td className="px-3 py-2.5 text-slate-600">{b?.km_final ? b.km_final - b.km_inicial : "—"}</td>
                     <td className="px-3 py-2.5 font-mono text-[11px] text-slate-400">{r.hash?.slice(0, 12)}…</td>
-                    <td className="px-3 py-2.5 text-right">
-                      <button onClick={() => setViewing(r)} className="text-teal-600 text-[11px] font-semibold hover:underline flex items-center gap-1 ml-auto"><Eye size={12} /> Ver</button>
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                      <button onClick={() => setViewing(r)} className="text-teal-600 text-[11px] font-semibold hover:underline mr-2"><Eye size={12} className="inline" /></button>
+                      <button onClick={() => setActionModal({ mode: "annotate", record: r })} className="text-slate-400 hover:text-teal-600 mr-2" title="Anotar corrección"><PenLine size={12} className="inline" /></button>
+                      {r.hidden_at ? (
+                        <button onClick={() => restore(r)} disabled={restoringId === r.id} className="text-slate-400 hover:text-emerald-600" title="Restaurar">
+                          {restoringId === r.id ? <Loader2 size={12} className="animate-spin inline" /> : <RotateCcw size={12} className="inline" />}
+                        </button>
+                      ) : (
+                        <button onClick={() => setActionModal({ mode: "hide", record: r })} className="text-slate-400 hover:text-amber-600" title="Ocultar"><EyeOff size={12} className="inline" /></button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -152,6 +190,15 @@ export default function Auditoria() {
         record={viewing}
         vehicle={viewing?.bitacoras?.vehicles}
         userName={viewing?.bitacoras?.profiles?.name}
+      />
+
+      <AuditActionModal
+        open={!!actionModal}
+        onClose={() => setActionModal(null)}
+        mode={actionModal?.mode}
+        record={actionModal?.record}
+        toast={toast}
+        onDone={load}
       />
     </div>
   );

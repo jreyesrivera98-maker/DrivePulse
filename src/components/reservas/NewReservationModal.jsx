@@ -12,6 +12,8 @@ export default function NewReservationModal({ open, onClose, vehicles, profiles,
     autorizado_por: "",
     start_date: todayISO(),
     end_date: todayISO(),
+    hora_salida_estimada: "08:00",
+    hora_regreso_estimada: "17:00",
   };
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -94,6 +96,12 @@ export default function NewReservationModal({ open, onClose, vehicles, profiles,
             </Field>
             <Field label="Fecha fin" required>
               <input type="date" className={inputCls} value={form.end_date} min={form.start_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+            </Field>
+            <Field label="Hora salida estimada">
+              <input type="time" className={inputCls} value={form.hora_salida_estimada} onChange={(e) => setForm({ ...form, hora_salida_estimada: e.target.value })} />
+            </Field>
+            <Field label="Hora regreso estimada">
+              <input type="time" className={inputCls} value={form.hora_regreso_estimada} onChange={(e) => setForm({ ...form, hora_regreso_estimada: e.target.value })} />
             </Field>
           </div>
 

@@ -253,6 +253,11 @@ export default function Dashboard({ profile }) {
                   <p>Colaborador: <strong className="text-slate-800">{activeReservation.profiles?.name || "—"}</strong></p>
                   <p>Destino: <strong className="text-slate-800">{activeReservation.destino || "—"}</strong></p>
                   <p>Del {fmtDate(activeReservation.start_date)} al {fmtDate(activeReservation.end_date)}</p>
+                  {(activeReservation.hora_salida_estimada || activeReservation.hora_regreso_estimada) && (
+                    <p>
+                      Horario estimado: {activeReservation.hora_salida_estimada?.slice(0, 5) || "—"} a {activeReservation.hora_regreso_estimada?.slice(0, 5) || "—"}
+                    </p>
+                  )}
                   <p>Autorizó: {activeReservation.autorizado_por || "—"}</p>
                 </div>
               ) : (

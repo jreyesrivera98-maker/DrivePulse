@@ -1,4 +1,4 @@
-import { X, ShieldCheck, MapPin, ExternalLink } from "lucide-react";
+import { X, ShieldCheck, MapPin, ExternalLink, PenLine, EyeOff } from "lucide-react";
 
 function fmtDateTime(iso) {
   if (!iso) return "—";
@@ -23,6 +23,25 @@ export default function AuditViewerModal({ open, onClose, record, vehicle, userN
         </div>
 
         <div className="p-6">
+          {record.hidden_at && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800 mb-4 flex items-start gap-2">
+              <EyeOff size={14} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Registro oculto — {fmtDateTime(record.hidden_at)}</p>
+                <p>{record.hidden_reason}</p>
+              </div>
+            </div>
+          )}
+          {record.correction_note && (
+            <div className="bg-teal-50 border border-teal-200 rounded-lg px-3 py-2.5 text-xs text-teal-800 mb-4 flex items-start gap-2 whitespace-pre-line">
+              <PenLine size={14} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold mb-1">Nota(s) de corrección administrativa</p>
+                <p>{record.correction_note}</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-4 mb-4 text-xs">
             <div className="bg-slate-50 rounded-lg p-3">
               <p className="text-slate-400">Vehículo</p>

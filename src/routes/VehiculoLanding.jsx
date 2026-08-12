@@ -108,7 +108,7 @@ export default function VehiculoLanding() {
               <p className="text-sm font-semibold text-blue-700 mb-2">🔵 En uso actualmente</p>
               <p className="text-xs text-blue-600">Colaborador: <strong>{activeReservation?.profiles?.name || "No disponible"}</strong></p>
               <p className="text-xs text-blue-600">
-                Entrega estimada: <strong>{activeReservation ? fmtDate(activeReservation.end_date) : "—"}</strong>
+                Entrega estimada: <strong>{activeReservation ? fmtDate(activeReservation.end_date) : "—"}{activeReservation?.hora_regreso_estimada ? ` · ${activeReservation.hora_regreso_estimada.slice(0, 5)}` : ""}</strong>
               </p>
               <button
                 onClick={() => navigate("/bitacora", { state: { vehicleId: vehicle.id } })}

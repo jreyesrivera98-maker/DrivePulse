@@ -57,6 +57,8 @@ export default function Reservas({ profile }) {
       autorizado_por: form.autorizado_por || null,
       start_date: form.start_date,
       end_date: form.end_date,
+      hora_salida_estimada: form.hora_salida_estimada || null,
+      hora_regreso_estimada: form.hora_regreso_estimada || null,
     });
     toast("Reserva creada correctamente.");
   };

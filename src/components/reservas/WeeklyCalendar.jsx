@@ -134,7 +134,7 @@ export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAd
                         key={r.id}
                         draggable={isAdmin}
                         onDragStart={() => setDragged(r.id)}
-                        title={`Reserva: ${r.profiles?.name || ""} · ${r.project || ""}`}
+                        title={`Reserva: ${r.profiles?.name || ""} · ${r.project || ""}${r.hora_salida_estimada ? ` · Sale ${r.hora_salida_estimada.slice(0, 5)}` : ""}${r.hora_regreso_estimada ? ` · Regresa ${r.hora_regreso_estimada.slice(0, 5)}` : ""}`}
                         className={`text-[10px] rounded-md px-1.5 py-1 mb-1 font-medium truncate bg-amber-100 text-amber-800 border border-amber-200 ${
                           isAdmin ? "cursor-grab active:cursor-grabbing" : ""
                         }`}
