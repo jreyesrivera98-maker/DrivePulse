@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Fuel, Loader2, Upload } from "lucide-react";
-import { uploadFile, BUCKETS } from "../../lib/supabaseClient";
+import { uploadFile, BUCKETS, ocrVoucher } from "../../lib/supabaseClient";
 import { Field, inputCls } from "../ui/formPrimitives";
 
 export default function RegistrarRecargaModal({ open, onClose, vehicles, onSave }) {
@@ -10,6 +10,7 @@ export default function RegistrarRecargaModal({ open, onClose, vehicles, onSave 
   const [processing, setProcessing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [ocrWarning, setOcrWarning] = useState("");
   const [litros, setLitros] = useState("");
   const [monto, setMonto] = useState("");
   const [estacion, setEstacion] = useState("");
@@ -22,20 +23,31 @@ export default function RegistrarRecargaModal({ open, onClose, vehicles, onSave 
   const handleFile = async (file) => {
     if (!file) return;
     setProcessing(true);
+    setError("");
+    setOcrWarning("");
     try {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${vehicleId || "general"}/${Date.now()}_voucher.${ext}`;
       const url = await uploadFile(BUCKETS.fuelVouchers, path, file);
       setImagenUrl(url);
 
-      const estaciones = ["Pemex Gonzalitos", "Oxxo Gas Constitución", "Pemex García", "Shell Cumbres"];
-      const l = (Math.random() * 30 + 15).toFixed(1);
-      const precioLitro = 22.5 + Math.random() * 2;
-      setLitros(l);
-      setMonto((l * precioLitro).toFixed(2));
-      setEstacion(estaciones[Math.floor(Math.random() * estaciones.length)]);
-      setFolio(`F-${Math.floor(Math.random() * 900000 + 100000)}`);
-      setConfidence("Media");
+      // La foto ya se guardó (para auditoría fiscal) aunque el OCR
+      // falle — un error de lectura nunca debe perder la evidencia.
+      try {
+        const result = await ocrVoucher(url);
+        setLitros(result.litros ?? "");
+        setMonto(result.monto ?? "");
+        setEstacion(result.estacion || "");
+        setFolio(result.folio || "");
+        setFecha((result.fecha_ticket || new Date().toISOString().slice(0, 16)).slice(0, 16));
+        setConfidence(result.confidence || "Media");
+        if ([result.litros, result.monto, result.estacion].some((v) => v === null)) {
+          setOcrWarning("Algunos campos no se pudieron leer con confianza — revísalos antes de confirmar.");
+        }
+      } catch (ocrErr) {
+        setConfidence("Manual");
+        setOcrWarning(ocrErr.message || "No se pudo leer el ticket automáticamente. Completa los datos manualmente.");
+      }
     } catch (err) {
       setError(err.message || "No se pudo subir el ticket.");
     } finally {
@@ -119,6 +131,7 @@ export default function RegistrarRecargaModal({ open, onClose, vehicles, onSave 
             <input type="datetime-local" className={inputCls} value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </Field>
 
+          {ocrWarning && <p className="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-2 mb-4">{ocrWarning}</p>}
           {error && <p className="text-xs bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-3 py-2 mb-4">{error}</p>}
 
           <button type="submit" disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">

@@ -6,6 +6,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useBranding } from "./hooks/useBranding";
 import { SelectedVehicleProvider } from "./contexts/SelectedVehicleContext";
 import RequireRole from "./guards/RequireRole";
+import RequirePlatformAdmin from "./guards/RequirePlatformAdmin";
 import PulseMark from "./components/ui/PulseMark";
 import Shell from "./components/layout/Shell";
 
@@ -13,6 +14,9 @@ import Shell from "./components/layout/Shell";
 // que ve cualquiera sin sesión, no tiene caso diferirlas.
 import Login from "./routes/Login";
 import SetPassword from "./routes/SetPassword";
+import Signup from "./routes/Signup";
+import CreateOrganization from "./routes/CreateOrganization";
+import OrganizationSuspended from "./routes/OrganizationSuspended";
 
 // El resto de las rutas se cargan bajo demanda (code-splitting), para
 // que el bundle inicial no incluya recharts, xlsx ni qrcode.react
@@ -27,7 +31,7 @@ const VehiculoLanding = lazy(() => import("./routes/VehiculoLanding"));
 const Combustible = lazy(() => import("./routes/Combustible"));
 const Historico = lazy(() => import("./routes/Historico"));
 const Auditoria = lazy(() => import("./routes/Auditoria"));
-const Gps = lazy(() => import("./routes/Gps"));
+const SuperAdmin = lazy(() => import("./routes/SuperAdmin"));
 
 /**
  * Enrutamiento real de DrivePulse.
@@ -67,11 +71,37 @@ export default function App() {
     return <SetPassword profile={profile} reloadProfile={reloadProfile} onDone={completePasswordRecovery} />;
   }
 
+  // Alguien que se acaba de auto-registrar (no invitado) tiene sesión
+  // pero todavía no pertenece a ninguna organización — hay que
+  // resolver eso antes de dejarlo entrar a cualquier otra pantalla.
+  const needsOrgSetup = session && profile && profile.status !== "invitado" && !profile.organization_id;
+  if (needsOrgSetup) {
+    return <CreateOrganization profile={profile} reloadProfile={reloadProfile} onDone={() => {}} />;
+  }
+
+  // Una organización suspendida bloquea a todos sus usuarios, salvo
+  // al super-admin de plataforma (que necesita poder investigar/
+  // reactivarla desde su propio panel).
+  const orgSuspended = session && profile && profile.organizations?.status === "suspendido" && !profile.is_platform_admin;
+  if (orgSuspended) {
+    return <OrganizationSuspended organizationName={profile.organizations?.name} />;
+  }
+
   return (
     <SelectedVehicleProvider>
       <Suspense fallback={<RouteLoader />}>
       <Routes>
       <Route path="/login" element={<Login session={session} profile={profile} />} />
+      <Route path="/signup" element={<Signup />} />
+
+      <Route
+        path="/super-admin"
+        element={
+          <RequirePlatformAdmin session={session} profile={profile}>
+            <SuperAdmin />
+          </RequirePlatformAdmin>
+        }
+      />
 
       <Route
         path="/dashboard"
@@ -167,17 +197,6 @@ export default function App() {
           <RequireRole session={session} profile={profile} allow={["administrador"]}>
             <Shell profile={profile} branding={branding}>
               <Auditoria />
-            </Shell>
-          </RequireRole>
-        }
-      />
-
-      <Route
-        path="/gps"
-        element={
-          <RequireRole session={session} profile={profile} allow={["administrador"]}>
-            <Shell profile={profile} branding={branding}>
-              <Gps />
             </Shell>
           </RequireRole>
         }

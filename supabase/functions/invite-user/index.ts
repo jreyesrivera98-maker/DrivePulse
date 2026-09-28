@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: callerProfile, error: profileError } = await callerClient
       .from("profiles")
-      .select("role")
+      .select("role, organization_id")
       .eq("id", user.id)
       .single();
 
@@ -83,6 +83,13 @@ Deno.serve(async (req: Request) => {
       return json(
         { error: "Solo un administrador puede invitar colaboradores." },
         403
+      );
+    }
+
+    if (!callerProfile.organization_id) {
+      return json(
+        { error: "Tu cuenta todavía no pertenece a ninguna organización." },
+        400
       );
     }
 
@@ -114,7 +121,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: invited, error: inviteError } =
       await adminClient.auth.admin.inviteUserByEmail(email, {
-        data: { name },
+        data: { name, organization_id: callerProfile.organization_id },
         redirectTo: siteUrl ? `${siteUrl}/set-password` : undefined,
       });
 
@@ -124,13 +131,15 @@ Deno.serve(async (req: Request) => {
     }
 
     // ------------------------------------------------------------------
-    // 4) El trigger on_auth_user_created (ver 0001_init.sql) ya creó
-    //    la fila en profiles con status = 'invitado'. Aquí completamos
-    //    rol, área y nombre.
+    // 4) El trigger on_auth_user_created (ver 0001_init.sql / 0018) ya
+    //    creó la fila en profiles con status = 'invitado' y
+    //    organization_id tomado de los metadatos de arriba. Aquí
+    //    completamos rol, área y nombre (y reforzamos organization_id
+    //    por si el trigger no llegó a leer el metadato a tiempo).
     // ------------------------------------------------------------------
     const { error: updateError } = await adminClient
       .from("profiles")
-      .update({ role, area: area ?? null, name })
+      .update({ role, area: area ?? null, name, organization_id: callerProfile.organization_id })
       .eq("id", invited.user.id);
 
     if (updateError) {

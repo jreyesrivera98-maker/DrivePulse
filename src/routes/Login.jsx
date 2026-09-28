@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertTriangle } from "lucide-react";
 import { signIn, signOut } from "../lib/supabaseClient";
 import { useBranding } from "../hooks/useBranding";
@@ -161,8 +161,11 @@ export default function Login({ profile, session }) {
 
             <div className="mt-5 pt-5 border-t border-slate-100 text-center">
               <p className="text-[11px] text-slate-400">
-                El autorregistro está deshabilitado. Solo el administrador puede invitar colaboradores desde
-                Configuración.
+                Para unirte a un equipo ya existente, pide una invitación a tu administrador.
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                ¿Vas a registrar tu empresa por primera vez?{" "}
+                <Link to="/signup" className="text-teal-600 font-medium hover:underline">Crea tu cuenta aquí</Link>
               </p>
             </div>
           </div>

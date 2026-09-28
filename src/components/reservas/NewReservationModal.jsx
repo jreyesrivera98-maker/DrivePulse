@@ -1,9 +1,27 @@
 import { useState, useEffect } from "react";
-import { X, Calendar, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { X, Calendar, Loader2, AlertTriangle } from "lucide-react";
 import { Field, inputCls } from "../ui/formPrimitives";
 import { todayISO } from "../../lib/dateUtils";
 
-export default function NewReservationModal({ open, onClose, vehicles, profiles, currentProfile, isAdmin, defaultVehicleId, onCreate }) {
+export default function NewReservationModal({
+  open,
+  onClose,
+  vehicles,
+  profiles,
+  currentProfile,
+  isAdmin,
+  defaultVehicleId,
+  onCreate,
+  // Mapa { [user_id]: { plate, vehicleId } } de colaboradores que
+  // hoy tienen un check-out (bitácora) sin cerrar en CUALQUIER
+  // vehículo. Es la misma regla que ya aplica la base de datos
+  // (trigger trg_block_reservation_open_bitacora); aquí solo la
+  // adelantamos para no dejar que el usuario llene el formulario
+  // completo y se entere del bloqueo hasta el final.
+  blockedUsers = {},
+}) {
+  const navigate = useNavigate();
   const emptyForm = {
     vehicle_id: defaultVehicleId || vehicles[0]?.id || "",
     user_id: isAdmin ? "" : currentProfile?.id || "",
@@ -28,6 +46,8 @@ export default function NewReservationModal({ open, onClose, vehicles, profiles,
 
   if (!open) return null;
 
+  const blockedInfo = form.user_id ? blockedUsers[form.user_id] : null;
+
   const submit = async (e) => {
     e.preventDefault();
     setError("");
@@ -37,6 +57,15 @@ export default function NewReservationModal({ open, onClose, vehicles, profiles,
     }
     if (form.end_date < form.start_date) {
       setError("La fecha fin no puede ser anterior a la fecha inicio.");
+      return;
+    }
+    if (blockedInfo) {
+      // Defensa en profundidad: la base de datos rechazaría esto de
+      // todas formas (trigger trg_block_reservation_open_bitacora),
+      // pero no dejamos ni siquiera intentar el submit.
+      setError(
+        `Este colaborador tiene un viaje sin cerrar en la unidad ${blockedInfo.plate}. Debe hacer check-in antes de reservar otro vehículo.`
+      );
       return;
     }
     setSaving(true);
@@ -82,6 +111,7 @@ export default function NewReservationModal({ open, onClose, vehicles, profiles,
                 {eligibleProfiles.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
+                    {blockedUsers[p.id] ? ` — ⚠ viaje sin cerrar (${blockedUsers[p.id].plate})` : ""}
                   </option>
                 ))}
               </select>
@@ -89,6 +119,28 @@ export default function NewReservationModal({ open, onClose, vehicles, profiles,
               <input className={`${inputCls} bg-slate-50`} value={currentProfile?.name || ""} disabled />
             )}
           </Field>
+
+          {blockedInfo && (
+            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2.5 mb-4 text-xs">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <div className="space-y-1.5">
+                <p>
+                  {isAdmin ? "Este colaborador tiene" : "Tienes"} un viaje sin cerrar en la unidad{" "}
+                  <strong>{blockedInfo.plate}</strong>. No se puede crear una reserva nueva hasta completar el check-in.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate("/bitacora");
+                  }}
+                  className="font-semibold underline underline-offset-2 hover:text-amber-900"
+                >
+                  Ir a cerrar el viaje ahora →
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Fecha inicio" required>
@@ -117,9 +169,13 @@ export default function NewReservationModal({ open, onClose, vehicles, profiles,
 
           {error && <p className="text-xs bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-3 py-2 mb-4">{error}</p>}
 
-          <button type="submit" disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={saving || !!blockedInfo}
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             {saving && <Loader2 size={15} className="animate-spin" />}
-            Confirmar reserva
+            {blockedInfo ? "Cierre pendiente — no disponible" : "Confirmar reserva"}
           </button>
         </form>
       </div>

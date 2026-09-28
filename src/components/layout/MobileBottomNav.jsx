@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Calendar, ClipboardList, Fuel, MoreHorizontal, Wrench, ShieldCheck, FolderClock, MapPin, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, ClipboardList, Fuel, MoreHorizontal, Wrench, ShieldCheck, FolderClock, Settings } from "lucide-react";
 
 const NAV_ADMIN = [
   { path: "/dashboard", label: "Inicio", icon: LayoutDashboard },
@@ -14,7 +14,6 @@ const MORE_ADMIN = [
   { path: "/inspecciones", label: "Inspecciones", icon: ShieldCheck },
   { path: "/historico", label: "Histórico", icon: FolderClock },
   { path: "/auditoria", label: "Auditoría", icon: ShieldCheck },
-  { path: "/gps", label: "GPS", icon: MapPin },
   { path: "/configuracion", label: "Configuración", icon: Settings },
 ];
 

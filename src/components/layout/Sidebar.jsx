@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, ClipboardList, Fuel, Wrench, ShieldCheck,
-  FolderClock, MapPin, Settings, Zap, LogOut,
+  FolderClock, Settings, Zap, LogOut, Building2,
 } from "lucide-react";
 import { signOut } from "../../lib/supabaseClient";
 import { useSelectedVehicle } from "../../contexts/SelectedVehicleContext";
@@ -36,7 +36,6 @@ const GROUPS_ADMIN = [
   {
     label: "Sistema",
     items: [
-      { path: "/gps", label: "GPS", icon: MapPin },
       { path: "/configuracion", label: "Configuración", icon: Settings },
     ],
   },
@@ -138,6 +137,20 @@ export default function Sidebar({ profile, branding }) {
           >
             <Zap size={17} fill="white" />
             <span className="hidden xl:block text-[13px] font-semibold">Acción rápida</span>
+          </button>
+        </div>
+      )}
+
+      {/* Panel de Plataforma — solo visible para super-admins de DrivePulse, independiente del rol dentro de su empresa */}
+      {profile?.is_platform_admin && (
+        <div className="px-2.5 mt-2">
+          <button
+            onClick={() => navigate("/super-admin")}
+            title="Panel de Plataforma"
+            className="w-full flex items-center justify-center xl:justify-start gap-2.5 rounded-xl border border-dashed border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition py-2 xl:px-2.5"
+          >
+            <Building2 size={16} />
+            <span className="hidden xl:block text-[12px] font-medium">Panel de Plataforma</span>
           </button>
         </div>
       )}

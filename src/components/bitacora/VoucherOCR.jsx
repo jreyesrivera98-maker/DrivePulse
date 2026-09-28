@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ScanLine, Loader2, Upload, PenLine } from "lucide-react";
-import { uploadFile, BUCKETS } from "../../lib/supabaseClient";
+import { ScanLine, Loader2, Upload, PenLine, AlertTriangle } from "lucide-react";
+import { uploadFile, BUCKETS, ocrVoucher } from "../../lib/supabaseClient";
 
 const inputCls =
   "w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/40";
@@ -16,24 +16,41 @@ export default function VoucherOCR({ voucher, setVoucher, vehicleId, toast }) {
       const path = `${vehicleId}/${Date.now()}_voucher.${ext}`;
       const imagenUrl = await uploadFile(BUCKETS.fuelVouchers, path, file);
 
-      // OCR simulado: no hay servicio de reconocimiento óptico conectado
-      // todavía (se integraría vía Edge Function con Google Vision / Mindee).
-      const estaciones = ["Pemex Gonzalitos", "Oxxo Gas Constitución", "Pemex García", "Shell Cumbres"];
-      const litros = (Math.random() * 30 + 15).toFixed(1);
-      const precioLitro = 22.5 + Math.random() * 2;
-      const monto = (litros * precioLitro).toFixed(2);
-
-      setVoucher({
-        attached: true,
-        imagenUrl,
-        litros,
-        monto,
-        estacion: estaciones[Math.floor(Math.random() * estaciones.length)],
-        folio: `F-${Math.floor(Math.random() * 900000 + 100000)}`,
-        ocrConfidence: "Media",
-        fecha: new Date().toISOString().slice(0, 16),
-      });
-      toast("Ticket subido. Datos extraídos por OCR (simulado) — verifica antes de guardar.");
+      // La foto ya quedó guardada (para auditoría fiscal) aunque el
+      // OCR falle — por eso el intento de leer los datos va en su
+      // propio try/catch: un error de lectura nunca debe perder la
+      // evidencia ya subida.
+      try {
+        const result = await ocrVoucher(imagenUrl);
+        setVoucher({
+          attached: true,
+          imagenUrl,
+          litros: result.litros ?? "",
+          monto: result.monto ?? "",
+          estacion: result.estacion || "",
+          folio: result.folio || "",
+          ocrConfidence: result.confidence || "Media",
+          fecha: (result.fecha_ticket || new Date().toISOString().slice(0, 16)).slice(0, 16),
+        });
+        const camposVacios = [result.litros, result.monto, result.estacion].filter((v) => v === null).length;
+        if (camposVacios > 0) {
+          toast("Ticket leído, pero algunos campos no se pudieron leer con confianza — revísalos antes de guardar.", "warn");
+        } else {
+          toast(`Ticket leído automáticamente (confianza: ${result.confidence || "Media"}). Verifica los datos antes de guardar.`);
+        }
+      } catch (ocrErr) {
+        setVoucher({
+          attached: true,
+          imagenUrl,
+          litros: "",
+          monto: "",
+          estacion: "",
+          folio: "",
+          ocrConfidence: "Manual",
+          fecha: new Date().toISOString().slice(0, 16),
+        });
+        toast(ocrErr.message || "No se pudo leer el ticket automáticamente. Completa los datos manualmente.", "error");
+      }
     } catch (err) {
       toast(err.message || "No se pudo subir el voucher.", "error");
     } finally {

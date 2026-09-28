@@ -39,6 +39,20 @@ export default function Reservas({ profile }) {
   const activeVehicleId = selectedVehicleId || vehicles[0]?.id || null;
   const selectedVehicle = vehicles.find((v) => v.id === activeVehicleId);
 
+  // Mapa { [user_id]: { plate, vehicleId } } de colaboradores con un
+  // check-out (bitácora) abierto en cualquier unidad. Alimenta el
+  // aviso proactivo de NewReservationModal — el bloqueo real e
+  // innegociable vive en la base de datos (trigger
+  // trg_block_reservation_open_bitacora), esto solo evita que el
+  // usuario llene el formulario para nada.
+  const blockedUsers = {};
+  for (const b of bitacoras) {
+    if (b.estado === "abierta" && b.user_id && !blockedUsers[b.user_id]) {
+      const v = vehicles.find((veh) => veh.id === b.vehicle_id);
+      blockedUsers[b.user_id] = { vehicleId: b.vehicle_id, plate: v?.plate || "—" };
+    }
+  }
+
   const handleDrop = async (reservationId, target) => {
     try {
       await moveReservation(reservationId, target);
@@ -110,6 +124,7 @@ export default function Reservas({ profile }) {
         isAdmin={isAdmin}
         defaultVehicleId={activeVehicleId}
         onCreate={handleCreate}
+        blockedUsers={blockedUsers}
       />
     </div>
   );

@@ -43,6 +43,37 @@ export async function signOut() {
 }
 
 /**
+ * Auto-registro: crea la cuenta de un futuro administrador que va a
+ * dar de alta su propia empresa. A diferencia de las invitaciones,
+ * esto SÍ es público — es la puerta de entrada para clientes nuevos
+ * de DrivePulse. El usuario nace sin organización (profiles.organization_id
+ * = null) hasta llamar createOrganization() justo después.
+ */
+export async function signUp(email, password, name) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name } },
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Da de alta la organización (empresa) de quien se acaba de
+ * registrar, y lo convierte en su primer administrador. Debe
+ * llamarse con una sesión ya activa (justo después de signUp()).
+ */
+export async function createOrganization(orgName, adminName) {
+  const { data, error } = await supabase.rpc("create_organization", {
+    p_org_name: orgName,
+    p_admin_name: adminName,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
  * Envía un correo de "restablecer contraseña" a un colaborador ya
  * activo. Reutiliza el mismo evento PASSWORD_RECOVERY y la misma
  * pantalla /set-password que el flujo de invitación — no requiere
@@ -101,7 +132,11 @@ export async function getCurrentProfile() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*, organizations(name, status, plan)")
+    .eq("id", user.id)
+    .single();
   if (error) throw error;
   return data;
 }
@@ -171,6 +206,21 @@ export async function uploadFile(bucket, path, file, { isPublic = false } = {}) 
     .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 días
   if (signError) throw signError;
   return data.signedUrl;
+}
+
+/**
+ * OCR real de un voucher de combustible ya subido a Storage. Recibe
+ * la URL (firmada o pública) de la foto y regresa los campos leídos
+ * por Claude — los que no se pudieron leer con confianza vienen en
+ * null, para que la persona los complete a mano en vez de que se le
+ * muestren datos inventados.
+ */
+export async function ocrVoucher(imageUrl) {
+  const { data, error } = await supabase.functions.invoke("ocr-voucher", {
+    body: { imageUrl },
+  });
+  if (error) throw error;
+  return data;
 }
 
 export { BUCKETS };
