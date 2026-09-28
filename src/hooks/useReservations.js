@@ -92,10 +92,24 @@ export function useReservations() {
     [hasOverlap]
   );
 
+  /** Edición completa (solo admin, lo impone RLS): valida anti-empalme excluyendo la propia reserva. */
+  const updateReservation = useCallback(
+    async (id, payload) => {
+      if (hasOverlap(payload.vehicle_id, payload.start_date, payload.end_date, id)) {
+        throw new Error("No se puede guardar: existe un empalme de horario con otra reserva de este vehículo.");
+      }
+      const { data, error } = await supabase.from("reservations").update(payload).eq("id", id).select("id");
+      if (error) throw error;
+      // RLS que no deja actualizar no devuelve error, solo 0 filas.
+      if (!data || data.length === 0) throw new Error("No tienes permiso para editar esta reserva.");
+    },
+    [hasOverlap]
+  );
+
   const deleteReservation = useCallback(async (id) => {
     const { error } = await supabase.from("reservations").delete().eq("id", id);
     if (error) throw error;
   }, []);
 
-  return { reservations, loading, error, refetch, createReservation, moveReservation, deleteReservation, hasOverlap };
+  return { reservations, loading, error, refetch, createReservation, moveReservation, updateReservation, deleteReservation, hasOverlap };
 }

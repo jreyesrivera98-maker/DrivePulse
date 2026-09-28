@@ -1,13 +1,27 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Filter, Plus } from "lucide-react";
-import { addDays, fmtShort, dayLabel, startOfWeek, todayISO } from "../../lib/dateUtils";
+import { addDays, fmtShort, fmtDate, dayLabel, startOfWeek, todayISO } from "../../lib/dateUtils";
 
-export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAdmin, weekOffset, setWeekOffset, onDrop, onNewReservation }) {
+export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAdmin, weekOffset, setWeekOffset, onDrop, onNewReservation, onSelectReservation }) {
   const weekStart = addDays(startOfWeek(todayISO()), weekOffset * 7);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const [selectedVehicles, setSelectedVehicles] = useState(vehicles.map((v) => v.id));
   const [dragged, setDragged] = useState(null);
+  // Popover de hover (solo trabajador, solo dispositivos con mouse).
+  // Va con position:fixed porque el contenedor del calendario tiene
+  // overflow-x-auto y recortaría un popover absoluto.
+  const [hover, setHover] = useState(null);
+
+  const showHover = (e, r) => {
+    if (isAdmin) return;
+    if (typeof window !== "undefined" && !window.matchMedia("(hover: hover)").matches) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const W = 260;
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - W - 8);
+    const below = rect.bottom + 8 + 150 < window.innerHeight;
+    setHover({ r, left, top: below ? rect.bottom + 6 : undefined, bottom: below ? undefined : window.innerHeight - rect.top + 6 });
+  };
 
   useEffect(() => {
     setSelectedVehicles((prev) => {
@@ -34,11 +48,27 @@ export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAd
 
   return (
     <div className="space-y-4">
+      {hover && (
+        <div className="fixed z-[140] w-[260px] pointer-events-none bg-slate-900 text-white rounded-xl shadow-xl p-3 text-[11px] space-y-1" style={{ left: hover.left, top: hover.top, bottom: hover.bottom }}>
+          <p className="font-semibold text-xs">{hover.r.profiles?.name || "—"}</p>
+          <p className="text-slate-300">
+            {hover.r.start_date === hover.r.end_date ? fmtDate(hover.r.start_date) : `${fmtDate(hover.r.start_date)} → ${fmtDate(hover.r.end_date)}`}
+          </p>
+          {(hover.r.hora_salida_estimada || hover.r.hora_regreso_estimada) && (
+            <p className="text-slate-300">
+              Sale {hover.r.hora_salida_estimada?.slice(0, 5) || "—"} · Regresa {hover.r.hora_regreso_estimada?.slice(0, 5) || "—"}
+            </p>
+          )}
+          {hover.r.project && <p>Proyecto: {hover.r.project}</p>}
+          {hover.r.destino && <p>Destino: {hover.r.destino}</p>}
+          {hover.r.autorizado_por && <p>Autoriza: {hover.r.autorizado_por}</p>}
+        </div>
+      )}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Calendario de Reservas</h1>
           <p className="text-sm text-slate-500">
-            {isAdmin ? "Arrastra una reserva para reprogramarla." : "Consulta la disponibilidad de la flotilla."}
+            {isAdmin ? "Haz clic en una reserva para editarla o arrástrala para reprogramarla." : "Consulta la disponibilidad de la flotilla. Pasa el cursor (o toca) una reserva para ver su detalle."}
           </p>
           <div className="flex items-center gap-3 mt-1.5">
             <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2.5 h-2.5 rounded-sm bg-amber-200 border border-amber-300" /> Reserva</span>
@@ -133,10 +163,19 @@ export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAd
                       <div
                         key={r.id}
                         draggable={isAdmin}
-                        onDragStart={() => setDragged(r.id)}
-                        title={`Reserva: ${r.profiles?.name || ""} · ${r.project || ""}${r.hora_salida_estimada ? ` · Sale ${r.hora_salida_estimada.slice(0, 5)}` : ""}${r.hora_regreso_estimada ? ` · Regresa ${r.hora_regreso_estimada.slice(0, 5)}` : ""}`}
-                        className={`text-[10px] rounded-md px-1.5 py-1 mb-1 font-medium truncate bg-amber-100 text-amber-800 border border-amber-200 ${
-                          isAdmin ? "cursor-grab active:cursor-grabbing" : ""
+                        onDragStart={() => {
+                          setHover(null);
+                          setDragged(r.id);
+                        }}
+                        onClick={() => {
+                          setHover(null);
+                          onSelectReservation?.(r);
+                        }}
+                        onMouseEnter={(e) => showHover(e, r)}
+                        onMouseLeave={() => setHover(null)}
+                        title={isAdmin ? "Clic para editar · arrastra para reprogramar" : undefined}
+                        className={`text-[10px] rounded-md px-1.5 py-1 mb-1 font-medium truncate bg-amber-100 text-amber-800 border border-amber-200 cursor-pointer hover:bg-amber-200 ${
+                          isAdmin ? "active:cursor-grabbing" : ""
                         }`}
                       >
                         {r.profiles?.name?.split(" ")[0] || "—"} · {r.destino || r.project || "Viaje"}

@@ -10,11 +10,12 @@ import VehicleBanner from "../components/reservas/VehicleBanner";
 import MobileVehicleSwiper from "../components/reservas/MobileVehicleSwiper";
 import OpenTripCard from "../components/reservas/OpenTripCard";
 import NewReservationModal from "../components/reservas/NewReservationModal";
+import ReservationDetailModal from "../components/reservas/ReservationDetailModal";
 import { Loader2 } from "lucide-react";
 
 export default function Reservas({ profile }) {
   const { vehicles, loading: loadingVehicles, error: vehiclesError } = useVehicles();
-  const { reservations, loading: loadingReservations, error: reservationsError, createReservation, moveReservation } = useReservations();
+  const { reservations, loading: loadingReservations, error: reservationsError, createReservation, moveReservation, updateReservation } = useReservations();
   const { bitacoras } = useBitacoras();
   const { profiles } = useProfiles();
   const { selectedVehicleId, setSelectedVehicleId, newReservationRequest } = useSelectedVehicle();
@@ -23,6 +24,7 @@ export default function Reservas({ profile }) {
   const isAdmin = profile?.role === "administrador";
   const [weekOffset, setWeekOffset] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState(null);
 
   // Escucha la señal del botón "+ Nueva Reserva" del Panel de Flotilla
   // (o del botón ⚡ configurado como "Nueva Reserva Rápida"), sin
@@ -77,6 +79,11 @@ export default function Reservas({ profile }) {
     toast("Reserva creada correctamente.");
   };
 
+  const handleUpdate = async (id, payload) => {
+    await updateReservation(id, payload);
+    toast("Reserva actualizada correctamente.");
+  };
+
   const loading = loadingVehicles || loadingReservations;
   const loadError = vehiclesError || reservationsError;
 
@@ -113,6 +120,17 @@ export default function Reservas({ profile }) {
         setWeekOffset={setWeekOffset}
         onDrop={handleDrop}
         onNewReservation={() => setModalOpen(true)}
+        onSelectReservation={setSelectedReservation}
+      />
+
+      <ReservationDetailModal
+        reservation={selectedReservation}
+        onClose={() => setSelectedReservation(null)}
+        vehicles={vehicles}
+        profiles={profiles}
+        isAdmin={isAdmin}
+        blockedUsers={blockedUsers}
+        onSave={handleUpdate}
       />
 
       <NewReservationModal
