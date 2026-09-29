@@ -1,27 +1,23 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Save, PenTool, Loader2, Wifi, WifiOff, LogOut, LogIn, User } from "lucide-react";
-import { supabase, uploadFile, BUCKETS } from "../lib/supabaseClient";
+import { Loader2, Wifi, WifiOff, LogOut, LogIn, User } from "lucide-react";
 import { useVehicles } from "../hooks/useVehicles";
 import { useOpenBitacora } from "../hooks/useOpenBitacora";
 import { useMyOpenBitacora } from "../hooks/useMyOpenBitacora";
+import { useSignOff } from "../hooks/useSignOff";
+import { submitCheckOut, submitCheckIn } from "../hooks/useBitacoras";
 import { useSelectedVehicle } from "../contexts/SelectedVehicleContext";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import { Field, inputCls } from "../components/ui/formPrimitives";
 import DamageMap from "../components/bitacora/DamageMap";
 import IncidenciaFotos from "../components/bitacora/IncidenciaFotos";
-import SignaturePad from "../components/bitacora/SignaturePad";
+import SignOffSection from "../components/bitacora/SignOffSection";
 import VoucherOCR from "../components/bitacora/VoucherOCR";
 import HistoricoBitacoras from "../components/bitacora/HistoricoBitacoras";
 import Badge from "../components/ui/Badge";
 import { fmtDate } from "../lib/dateUtils";
 
 const FUEL_LEVELS = ["Vacío", "1/4", "1/2", "3/4", "Lleno"];
-
-async function dataUrlToBlob(dataUrl) {
-  const res = await fetch(dataUrl);
-  return res.blob();
-}
 
 function useOnlineStatus() {
   const [online, setOnline] = useState(navigator.onLine);
@@ -35,17 +31,6 @@ function useOnlineStatus() {
     };
   }, []);
   return online;
-}
-
-function captureGps() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
-      { timeout: 4000 }
-    );
-  });
 }
 
 export default function Bitacora({ profile }) {
@@ -123,7 +108,7 @@ export default function Bitacora({ profile }) {
         ) : openBitacora ? (
           <CheckInForm
             key={openBitacora.id}
-            vehicle={vehicle}
+            profile={profile}
             openBitacora={openBitacora}
             online={online}
             toast={toast}
@@ -134,6 +119,7 @@ export default function Bitacora({ profile }) {
         ) : (
           <CheckOutForm
             key={vehicleId}
+            profile={profile}
             vehicle={vehicle}
             vehicleId={vehicleId}
             online={online}
@@ -153,7 +139,7 @@ export default function Bitacora({ profile }) {
 /* ============================================================
    CHECK-OUT: abre un viaje nuevo
 ============================================================ */
-function CheckOutForm({ vehicle, vehicleId, online, toast, onDone }) {
+function CheckOutForm({ profile, vehicle, vehicleId, online, toast, onDone }) {
   const [proyecto, setProyecto] = useState("");
   const [destino, setDestino] = useState("");
   const [autorizadoPor, setAutorizadoPor] = useState("");
@@ -163,52 +149,51 @@ function CheckOutForm({ vehicle, vehicleId, online, toast, onDone }) {
   const [incidencias, setIncidencias] = useState("");
   const [incidenciaFotos, setIncidenciaFotos] = useState([]);
   const [danios, setDanios] = useState([]);
-  const [firma, setFirma] = useState(null);
-  const [conformidad, setConformidad] = useState(false);
+  const [declaracion, setDeclaracion] = useState(false);
   const [voucher, setVoucher] = useState({ attached: false });
-  const [saving, setSaving] = useState(false);
+  const signOff = useSignOff({ toast });
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const runSubmit = async ({ blind = false } = {}) => {
     if (!online) return toast("Sin conexión: intenta de nuevo al recuperar señal.", "warn");
-    if (!conformidad) return toast("Debes aceptar la declaración de conformidad.", "error");
-    if (!firma) return toast("Captura tu firma digital antes de continuar.", "error");
+    if (!declaracion) return; // el botón ya está deshabilitado; defensa en profundidad
 
-    setSaving(true);
+    // Auditoría ciega: biometría (o fallback) + GPS + timestamp, congelado.
+    const cajaNegra = await signOff.collect({
+      userId: profile?.id,
+      userName: profile?.name,
+      forceBlind: blind,
+      context: { evento: "CHECK_OUT_INICIO", vehicle_id: vehicleId, km_inicial: Number(kmInicial) || null },
+    });
+    if (!cajaNegra) return;
+
+    signOff.markSaving();
     try {
-      const firmaBlob = await dataUrlToBlob(firma);
-      const firmaUrl = await uploadFile(BUCKETS.signatures, `${vehicleId}/${Date.now()}_firma_salida.png`, firmaBlob);
-      const gps = await captureGps();
-
-      const { data, error } = await supabase.rpc("submit_bitacora", {
-        p_vehicle_id: vehicleId,
-        p_tipo: "salida",
-        p_proyecto: proyecto,
-        p_destino: destino,
-        p_autorizado_por: autorizadoPor,
-        p_km_inicial: Number(kmInicial) || vehicle?.km || 0,
-        p_km_final: null,
-        p_combustible_salida: combustibleSalida,
-        p_combustible_regreso: null,
-        p_limpieza: limpieza,
-        p_incidencias: incidencias,
-        p_incidencia_fotos: incidenciaFotos,
-        p_danios: danios,
-        p_firma_url: firmaUrl,
-        p_gps_lat: gps?.lat ?? null,
-        p_gps_lng: gps?.lng ?? null,
-        p_voucher: voucher.attached ? voucher : null,
-        p_user_agent: navigator.userAgent,
+      const data = await submitCheckOut({
+        vehicleId,
+        proyecto,
+        destino,
+        autorizadoPor,
+        kmInicial: Number(kmInicial) || vehicle?.km || 0,
+        combustibleSalida,
+        limpieza,
+        incidencias,
+        incidenciaFotos,
+        danios,
+        cajaNegra,
+        voucher: voucher.attached ? voucher : null,
       });
-
-      if (error) throw error;
       toast(`Viaje abierto correctamente (hash ${data.hash.slice(0, 10)}…). Al regresar, cierra este mismo viaje desde aquí.`);
       onDone();
     } catch (err) {
       toast(err.message || "No se pudo registrar la salida.", "error");
     } finally {
-      setSaving(false);
+      signOff.reset();
     }
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    runSubmit();
   };
 
   return (
@@ -256,23 +241,14 @@ function CheckOutForm({ vehicle, vehicleId, online, toast, onDone }) {
         <VoucherOCR voucher={voucher} setVoucher={setVoucher} vehicleId={vehicleId} toast={toast} />
       </div>
 
-      <div className="mb-5">
-        <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
-          <PenTool size={14} className="text-teal-600" /> Firma digital de salida
-        </p>
-        <SignaturePad onChange={setFirma} />
-      </div>
-
-      <label className="flex items-start gap-2 text-xs text-slate-600 mb-5 bg-slate-50 rounded-lg p-3 border border-slate-100">
-        <input type="checkbox" className="accent-teal-600 mt-0.5" checked={conformidad} onChange={(e) => setConformidad(e.target.checked)} />
-        Declaro que la información capturada es verídica y refleja el estado real del vehículo al momento del registro.
-        Entiendo que este registro quedará almacenado de forma inmutable para fines de auditoría.
-      </label>
-
-      <button type="submit" disabled={saving} className="w-full bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-        {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-        {saving ? "Guardando…" : "Registrar salida y abrir viaje"}
-      </button>
+      <SignOffSection
+        accent="teal"
+        declaracion={declaracion}
+        onDeclaracionChange={setDeclaracion}
+        stage={signOff.stage}
+        showBlindFallback={signOff.biometricCancelled}
+        onBlindFallback={() => runSubmit({ blind: true })}
+      />
     </form>
   );
 }
@@ -280,52 +256,54 @@ function CheckOutForm({ vehicle, vehicleId, online, toast, onDone }) {
 /* ============================================================
    CHECK-IN: cierra el viaje abierto, sin perder al conductor original
 ============================================================ */
-function CheckInForm({ vehicle, openBitacora, online, toast, onDone }) {
+function CheckInForm({ profile, openBitacora, online, toast, onDone }) {
   const [kmFinal, setKmFinal] = useState("");
   const [combustibleRegreso, setCombustibleRegreso] = useState("Lleno");
   const [incidenciasRegreso, setIncidenciasRegreso] = useState("");
   const [incidenciaFotos, setIncidenciaFotos] = useState([]);
   const [danios, setDanios] = useState([]);
-  const [firma, setFirma] = useState(null);
-  const [conformidad, setConformidad] = useState(false);
+  const [declaracion, setDeclaracion] = useState(false);
   const [voucher, setVoucher] = useState({ attached: false });
-  const [saving, setSaving] = useState(false);
+  const signOff = useSignOff({ toast });
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const runSubmit = async ({ blind = false } = {}) => {
     if (!online) return toast("Sin conexión: intenta de nuevo al recuperar señal.", "warn");
-    if (!conformidad) return toast("Debes aceptar la declaración de conformidad.", "error");
-    if (!firma) return toast("Captura tu firma digital antes de continuar.", "error");
+    if (!declaracion) return; // el botón ya está deshabilitado; defensa en profundidad
     if (!kmFinal) return toast("Captura el KM final.", "error");
 
-    setSaving(true);
+    // Auditoría ciega: biometría (o fallback) + GPS + timestamp, congelado.
+    const cajaNegra = await signOff.collect({
+      userId: profile?.id,
+      userName: profile?.name,
+      forceBlind: blind,
+      context: { evento: "CHECK_IN_REGRESO", bitacora_id: openBitacora.id, km_final: Number(kmFinal) },
+    });
+    if (!cajaNegra) return;
+
+    signOff.markSaving();
     try {
-      const firmaBlob = await dataUrlToBlob(firma);
-      const firmaUrl = await uploadFile(BUCKETS.signatures, `${openBitacora.vehicle_id}/${Date.now()}_firma_regreso.png`, firmaBlob);
-      const gps = await captureGps();
-
-      const { data, error } = await supabase.rpc("close_bitacora", {
-        p_bitacora_id: openBitacora.id,
-        p_km_final: Number(kmFinal),
-        p_combustible_regreso: combustibleRegreso,
-        p_incidencias_regreso: incidenciasRegreso,
-        p_danios: danios,
-        p_firma_url: firmaUrl,
-        p_gps_lat: gps?.lat ?? null,
-        p_gps_lng: gps?.lng ?? null,
-        p_voucher: voucher.attached ? voucher : null,
-        p_user_agent: navigator.userAgent,
-        p_incidencia_fotos: incidenciaFotos,
+      const data = await submitCheckIn({
+        bitacoraId: openBitacora.id,
+        kmFinal: Number(kmFinal),
+        combustibleRegreso,
+        incidenciasRegreso,
+        incidenciaFotos,
+        danios,
+        cajaNegra,
+        voucher: voucher.attached ? voucher : null,
       });
-
-      if (error) throw error;
       toast(`Viaje cerrado correctamente (hash ${data.hash.slice(0, 10)}…).`);
       onDone();
     } catch (err) {
       toast(err.message || "No se pudo cerrar el viaje.", "error");
     } finally {
-      setSaving(false);
+      signOff.reset();
     }
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    runSubmit();
   };
 
   return (
@@ -367,23 +345,14 @@ function CheckInForm({ vehicle, openBitacora, online, toast, onDone }) {
           <VoucherOCR voucher={voucher} setVoucher={setVoucher} vehicleId={openBitacora.vehicle_id} toast={toast} />
         </div>
 
-        <div className="mb-5">
-          <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
-            <PenTool size={14} className="text-teal-600" /> Firma digital de regreso
-          </p>
-          <SignaturePad onChange={setFirma} />
-        </div>
-
-        <label className="flex items-start gap-2 text-xs text-slate-600 mb-5 bg-slate-50 rounded-lg p-3 border border-slate-100">
-          <input type="checkbox" className="accent-teal-600 mt-0.5" checked={conformidad} onChange={(e) => setConformidad(e.target.checked)} />
-          Declaro que la información capturada es verídica y refleja el estado real del vehículo al momento del registro.
-          Entiendo que este registro quedará almacenado de forma inmutable para fines de auditoría.
-        </label>
-
-        <button type="submit" disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-          {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-          {saving ? "Guardando…" : "Registrar regreso y cerrar viaje"}
-        </button>
+        <SignOffSection
+          accent="blue"
+          declaracion={declaracion}
+          onDeclaracionChange={setDeclaracion}
+          stage={signOff.stage}
+          showBlindFallback={signOff.biometricCancelled}
+          onBlindFallback={() => runSubmit({ blind: true })}
+        />
       </form>
     </div>
   );

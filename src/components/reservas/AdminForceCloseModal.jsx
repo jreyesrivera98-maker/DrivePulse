@@ -51,7 +51,7 @@ export default function AdminForceCloseModal({ open, onClose, openBitacora, vehi
 
         <form onSubmit={submit} className="p-6">
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-[11px] text-amber-700 mb-4">
-            Esto cierra el viaje sin firma ni fotos del conductor. Úsalo solo cuando el check-in normal no se pudo
+            Esto cierra el viaje sin declaración jurada, biometría ni fotos del conductor. Úsalo solo cuando el check-in normal no se pudo
             completar por algún error. Queda registrado en la Caja Negra como un cierre administrativo, distinto a
             un check-in real — nunca se sobrescribe quién sacó el vehículo.
           </div>

@@ -1,4 +1,5 @@
 import { X, ShieldCheck, MapPin, ExternalLink, PenLine, EyeOff } from "lucide-react";
+import CierreAuditInfo from "./CierreAuditInfo";
 
 function fmtDateTime(iso) {
   if (!iso) return "—";
@@ -71,9 +72,14 @@ export default function AuditViewerModal({ open, onClose, record, vehicle, userN
             </div>
           </div>
 
+          <div className="mb-4">
+            <CierreAuditInfo cajaNegra={snapshot.caja_negra} />
+          </div>
+
+          {/* Registros anteriores a la firma biométrica (0022) conservan su imagen de firma. */}
           {snapshot.firma_url && (
             <div className="mb-4">
-              <p className="text-xs font-semibold text-slate-500 mb-1">Firma digital capturada</p>
+              <p className="text-xs font-semibold text-slate-500 mb-1">Firma gráfica (registro histórico)</p>
               <img src={snapshot.firma_url} className="border border-slate-200 rounded-lg bg-white h-24 object-contain" alt="Firma" />
             </div>
           )}

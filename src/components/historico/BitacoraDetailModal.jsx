@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, ClipboardList, Loader2, MapPin, ExternalLink } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import CierreAuditInfo from "../bitacora/CierreAuditInfo";
 
 const FUEL_TO_PCT = { "Vacío": 0.04, "1/4": 0.25, "1/2": 0.5, "3/4": 0.75, "Lleno": 1 };
 
@@ -135,9 +136,17 @@ export default function BitacoraDetailModal({ open, onClose, bitacora }) {
                 </div>
               )}
 
+              {(bitacora.caja_negra_salida || bitacora.caja_negra_regreso) && (
+                <div className="grid md:grid-cols-2 gap-3 mb-5">
+                  <CierreAuditInfo cajaNegra={bitacora.caja_negra_salida} titulo="Check-out — firma y auditoría" />
+                  <CierreAuditInfo cajaNegra={bitacora.caja_negra_regreso} titulo="Check-in — firma y auditoría" />
+                </div>
+              )}
+
+              {/* Registros anteriores a la firma biométrica (0022) conservan su imagen de firma. */}
               {bitacora.firma_url && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Firma digital</p>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Firma gráfica (registro histórico)</p>
                   <img src={bitacora.firma_url} className="border border-slate-200 rounded-lg bg-white h-20 object-contain" alt="Firma" />
                 </div>
               )}
