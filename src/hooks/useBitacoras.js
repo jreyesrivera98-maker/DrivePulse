@@ -57,6 +57,21 @@ export function useBitacoras() {
 ============================================================ */
 
 /**
+ * Traduce errores crudos de PostgREST a algo accionable. El caso típico tras
+ * este cambio: el frontend nuevo desplegado sin haber aplicado la migración 0022.
+ */
+function friendlyRpcError(error) {
+  console.error("[bitacoras] RPC error:", error);
+  const raw = `${error?.code ?? ""} ${error?.message ?? ""}`;
+  if (/PGRST202|schema cache|Could not find the function/i.test(raw)) {
+    return new Error(
+      "La base de datos aún no tiene la actualización de firma biométrica (migración 0022). Avisa a un administrador."
+    );
+  }
+  return error instanceof Error ? error : new Error(error?.message || "Error al guardar la bitácora.");
+}
+
+/**
  * Check-out: abre un viaje.
  * @param {Object} p
  * @param {string} p.vehicleId
@@ -92,7 +107,7 @@ export async function submitCheckOut(p) {
     p_voucher: p.voucher,
     p_user_agent: navigator.userAgent,
   });
-  if (error) throw error;
+  if (error) throw friendlyRpcError(error);
   return data;
 }
 
@@ -121,6 +136,6 @@ export async function submitCheckIn(p) {
     p_user_agent: navigator.userAgent,
     p_incidencia_fotos: p.incidenciaFotos,
   });
-  if (error) throw error;
+  if (error) throw friendlyRpcError(error);
   return data;
 }

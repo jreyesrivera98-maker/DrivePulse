@@ -1,15 +1,21 @@
 import { useState, useCallback } from "react";
 import { authenticateBiometric } from "../lib/biometricAuth";
-import { captureGps, isGpsPermissionDenied, buildCajaNegra } from "../lib/cajaNegra";
+import { captureGps, getGpsPermissionState, buildCajaNegra } from "../lib/cajaNegra";
 
 /**
  * Orquesta el "Autenticar y Firmar" de un check-in / check-out:
  *
  *   1. Timestamp del sistema (no editable por el usuario).
- *   2. Si el permiso de GPS ya está denegado → aborta ANTES de pedir la huella.
- *   3. Biometría nativa (WebAuthn). Se pide primero porque los navegadores
- *      exigen que la ceremonia arranque pegada al gesto del usuario (el tap).
- *   4. Ubicación GPS (obligatoria).
+ *   2. GPS (obligatorio), según el estado del permiso:
+ *        - "granted": se arranca YA en paralelo a la huella (sin prompt extra)
+ *          para no sumar la espera del GPS a la de la biometría.
+ *        - "denied": se intenta igualmente una vez (falla al instante si de
+ *          verdad está denegado, y evita abortar por un falso positivo de la
+ *          Permissions API) ANTES de pedir la huella.
+ *        - "prompt"/desconocido: se pide después de la huella.
+ *   3. Biometría nativa (WebAuthn). Se lanza pegada al tap del usuario porque
+ *      los navegadores (Safari) exigen ese gesto para abrir la ceremonia.
+ *   4. Se espera el resultado del GPS.
  *   5. Devuelve la caja negra ya congelada, lista para el RPC de Supabase.
  *
  * Fallback "Auditoría Ciega":
@@ -45,12 +51,15 @@ export function useSignOff({ toast }) {
       const timestampCierre = new Date().toISOString();
 
       try {
-        if (await isGpsPermissionDenied()) {
-          toast(
-            "La ubicación está bloqueada en tu navegador. Actívala en los permisos del sitio: es obligatoria para entregar el vehículo.",
-            "error"
-          );
-          return null;
+        const permiso = await getGpsPermissionState();
+        let gpsPromise = null;
+        if (permiso === "denied") {
+          // Confirma con una lectura real: si de verdad está denegado lanza GpsError ya.
+          const gps = await captureGps();
+          gpsPromise = Promise.resolve(gps);
+        } else if (permiso === "granted") {
+          gpsPromise = captureGps();
+          gpsPromise.catch(() => {}); // evita "unhandled rejection" si la huella se cancela antes
         }
 
         let webauthn = null;
@@ -80,13 +89,14 @@ export function useSignOff({ toast }) {
         }
 
         setStage("gps");
-        const gps = await captureGps();
+        const gps = await (gpsPromise ?? captureGps());
 
         const cajaNegra = buildCajaNegra({ timestampCierre, gps, webauthn, motivoFallback });
         ok = true;
         return cajaNegra;
       } catch (err) {
         // GpsError u otro imprevisto: el mensaje ya es amigable.
+        console.warn("[useSignOff] cierre abortado:", err?.code, err?.detail ?? err?.message);
         toast(err.message || "No se pudo completar la autenticación.", "error");
         return null;
       } finally {
