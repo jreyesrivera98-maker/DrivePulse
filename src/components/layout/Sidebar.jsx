@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, ClipboardList, Fuel, Wrench, ShieldCheck,
-  FolderClock, Settings, Zap, LogOut, Building2, FileText,
+  FolderClock, Settings, Zap, LogOut, Building2, FileText, HelpCircle,
 } from "lucide-react";
 import { signOut } from "../../lib/supabaseClient";
 import { useSelectedVehicle } from "../../contexts/SelectedVehicleContext";
@@ -187,6 +187,14 @@ export default function Sidebar({ profile, branding }) {
         >
           <FileText size={15} />
           <span className="hidden xl:block text-[11px]">Aviso de privacidad</span>
+        </button>
+        <button
+          onClick={() => navigate("/preguntas-frecuentes")}
+          title="Preguntas frecuentes"
+          className="w-full flex items-center justify-center xl:justify-start gap-2 rounded-xl py-2 mt-1 xl:px-2.5 text-slate-500 hover:text-slate-200 hover:bg-white/5 transition"
+        >
+          <HelpCircle size={15} />
+          <span className="hidden xl:block text-[11px]">Preguntas frecuentes</span>
         </button>
       </div>
     </div>

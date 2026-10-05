@@ -4,7 +4,8 @@
  *  - `a`:     párrafos de la respuesta.
  *  - `steps`: lista de pasos (opcional), para guías paso a paso.
  *  - `link`:  enlace de apoyo (opcional).
- *  - Los tokens {{campo}} se reemplazan con datos de config/legal.js.
+ *  - Los tokens {{campo}} se reemplazan con los datos que el administrador configura en Configuración › Privacidad
+ *    (si no están configurados, se muestra un texto genérico como "tu administrador").
  *
  * Mantén las respuestas alineadas con el aviso de privacidad y con lo que
  * la app hace de verdad (hooks/useSignOff.js, lib/cajaNegra.js).
@@ -168,7 +169,7 @@ export const FAQ_ITEMS = [
     category: "privacidad",
     q: "¿Cómo ejerzo mis derechos de acceso, rectificación, cancelación u oposición?",
     a: [
-      "Escribe a {{correoPrivacidad}} con tu nombre completo, un medio para responderte, un documento que acredite tu identidad y una descripción clara de lo que solicitas.",
+      "Escríbele a {{correoPrivacidad}} con tu nombre completo, un medio para responderte, un documento que acredite tu identidad y una descripción clara de lo que solicitas.",
     ],
     link: { to: "/privacidad#derechos", label: "Más sobre tus derechos" },
   },
@@ -177,7 +178,7 @@ export const FAQ_ITEMS = [
     category: "privacidad",
     q: "¿Dónde presento una queja si considero que no se respetó mi derecho?",
     a: [
-      "Primero con el responsable, en {{correoPrivacidad}}. También puedes acudir a la Secretaría Anticorrupción y Buen Gobierno, la autoridad en materia de protección de datos personales en posesión de particulares desde marzo de 2025.",
+      "Primero comunícate con {{correoPrivacidad}}. También puedes acudir a la Secretaría Anticorrupción y Buen Gobierno, la autoridad en materia de protección de datos personales en posesión de particulares desde marzo de 2025.",
     ],
   },
 ];

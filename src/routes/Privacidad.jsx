@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { AlertTriangle, Check, Lock, X } from "lucide-react";
+import { Check, Lock, X } from "lucide-react";
 import LegalLayout from "../components/legal/LegalLayout";
 import { LegalValue } from "../components/legal/LegalValue";
-import { LEGAL, legalIncomplete } from "../config/legal";
+import { LegalProvider, useLegal } from "../components/legal/LegalContext";
+import { LEGAL } from "../config/legal";
 
 /*
  * Aviso de privacidad (México · Ley Federal de Protección de Datos Personales
@@ -67,21 +68,6 @@ function TableOfContents() {
   );
 }
 
-function PendingNotice() {
-  return (
-    <div role="alert" className="mb-8 flex gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-      <AlertTriangle size={18} className="mt-0.5 shrink-0" />
-      <div>
-        <p className="font-semibold">Faltan datos del responsable</p>
-        <p className="mt-1 leading-relaxed">
-          Los datos resaltados en ámbar son marcadores. Complétalos en <code className="rounded bg-amber-100 px-1">src/config/legal.js</code> y haz
-          revisar el texto con tu asesor legal antes de publicar este aviso.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 /** El elemento central: lo que se guarda frente a lo que nunca sale del dispositivo. */
 function QueSeGuarda() {
   return (
@@ -113,14 +99,13 @@ function QueSeGuarda() {
   );
 }
 
-export default function Privacidad() {
+function PrivacidadContent() {
+  const { legal } = useLegal();
   return (
     <LegalLayout
       title="Aviso de privacidad"
       description="Qué datos personales recabamos en DrivePulse, para qué los usamos y cómo puedes ejercer tus derechos."
     >
-      {legalIncomplete && <PendingNotice />}
-
       <QueSeGuarda />
 
       <p className="mt-4 max-w-[68ch] text-sm leading-6 text-slate-500">
@@ -144,8 +129,26 @@ export default function Privacidad() {
         <div className="min-w-0 space-y-10">
           <Section id="responsable" title="1. Quién es el responsable">
             <P>
-              <LegalValue field="responsable" />, con domicilio en <LegalValue field="domicilio" />, es el responsable del tratamiento de tus datos
-              personales.
+              {legal.responsable ? (
+                <>
+                  <LegalValue field="responsable" />
+                  {legal.domicilio && (
+                    <>
+                      , con domicilio en <LegalValue field="domicilio" />,
+                    </>
+                  )}{" "}
+                  es el responsable del tratamiento de tus datos personales.
+                </>
+              ) : (
+                <>
+                  El responsable del tratamiento de tus datos personales es <LegalValue field="responsable" /> (normalmente tu empleador).
+                  {legal.domicilio && (
+                    <>
+                      {" "}Su domicilio es <LegalValue field="domicilio" />.
+                    </>
+                  )}
+                </>
+              )}
             </P>
             <P>
               {LEGAL.plataforma} es la plataforma de gestión de flotilla vehicular, desarrollada por {LEGAL.desarrollador}, que el responsable utiliza para
@@ -252,8 +255,14 @@ export default function Privacidad() {
 
           <Section id="conservacion" title="7. Cuánto tiempo los conservamos">
             <P>
-              Conservamos tus datos mientras tu cuenta esté activa y durante <LegalValue field="plazoConservacion" /> después, o el tiempo que la ley
-              exija.
+              {legal.plazoConservacion ? (
+                <>
+                  Conservamos tus datos mientras tu cuenta esté activa y durante <LegalValue field="plazoConservacion" /> después, o el tiempo que
+                  la ley exija.
+                </>
+              ) : (
+                "Conservamos tus datos mientras tu cuenta esté activa y durante el tiempo que la ley exija."
+              )}
             </P>
             <P>
               Los registros de bitácora y de auditoría están diseñados para no poder modificarse ni borrarse: cada cierre genera una huella digital
@@ -306,5 +315,13 @@ export default function Privacidad() {
         </div>
       </div>
     </LegalLayout>
+  );
+}
+
+export default function Privacidad() {
+  return (
+    <LegalProvider>
+      <PrivacidadContent />
+    </LegalProvider>
   );
 }

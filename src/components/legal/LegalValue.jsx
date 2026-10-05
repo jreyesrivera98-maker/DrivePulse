@@ -1,18 +1,23 @@
-import { LEGAL, isPlaceholder } from "../../config/legal";
+import { useLegal } from "./LegalContext";
+
+// Texto que se muestra mientras la organización no haya configurado el dato.
+// Está redactado para leerse bien dentro de las frases donde se usa.
+const FALLBACKS = {
+  responsable: "la organización que te dio acceso a DrivePulse",
+  domicilio: "el domicilio que te indique tu organización",
+  correoPrivacidad: "tu administrador",
+  plazoConservacion: "el tiempo que la ley exija",
+};
 
 /**
- * Muestra un dato de LEGAL. Si todavía es un marcador "[...]" lo resalta en
- * ámbar; si es un correo real, lo vuelve un enlace mailto.
+ * Muestra un dato legal configurado en Configuración › Privacidad.
+ * Si aún no está configurado, muestra un texto genérico (sin marcadores).
+ * El correo se vuelve un enlace mailto.
  */
 export function LegalValue({ field }) {
-  const value = LEGAL[field];
-  if (isPlaceholder(value)) {
-    return (
-      <span className="rounded bg-amber-100 px-1 font-medium text-amber-900" title="Dato pendiente de configurar en src/config/legal.js">
-        {value}
-      </span>
-    );
-  }
+  const { legal } = useLegal();
+  const value = legal[field];
+  if (!value) return <span>{FALLBACKS[field]}</span>;
   if (field === "correoPrivacidad") {
     return (
       <a href={`mailto:${value}`} className="font-medium text-teal-700 underline underline-offset-2">

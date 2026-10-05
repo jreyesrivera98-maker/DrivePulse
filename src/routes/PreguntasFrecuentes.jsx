@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, Search, SearchX, ShieldCheck } from "lucide-react";
 import LegalLayout from "../components/legal/LegalLayout";
 import { withLegalValues } from "../components/legal/LegalValue";
+import { LegalProvider } from "../components/legal/LegalContext";
 import { FAQ_CATEGORIES, FAQ_ITEMS } from "../content/faq";
 
 // Búsqueda sin acentos ni mayúsculas: "ubicacion" encuentra "ubicación".
@@ -67,7 +68,7 @@ function FaqItem({ item, open, onToggle }) {
   );
 }
 
-export default function PreguntasFrecuentes() {
+function PreguntasFrecuentesContent() {
   const location = useLocation();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("todas");
@@ -168,5 +169,13 @@ export default function PreguntasFrecuentes() {
         </div>
       </div>
     </LegalLayout>
+  );
+}
+
+export default function PreguntasFrecuentes() {
+  return (
+    <LegalProvider>
+      <PreguntasFrecuentesContent />
+    </LegalProvider>
   );
 }

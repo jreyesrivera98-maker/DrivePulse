@@ -2,18 +2,21 @@ import { useState, useEffect } from "react";
 import { Save, UserPlus, Zap, Calendar, ClipboardList, QrCode, EyeOff, Loader2, Trash2, KeyRound, Edit2, Check, X } from "lucide-react";
 import { uploadFile, BUCKETS, resetPasswordForEmail } from "../lib/supabaseClient";
 import { useBranding } from "../hooks/useBranding";
+import { useLegalSettings, countMissingLegal } from "../hooks/useLegalSettings";
 import { useProfiles } from "../hooks/useProfiles";
 import { useToasts, ToastStack } from "../components/ui/Toast";
 import { Field, inputCls } from "../components/ui/formPrimitives";
 import InviteUserModal from "../components/configuracion/InviteUserModal";
 import SetPasswordManualModal from "../components/configuracion/SetPasswordManualModal";
 import VehiculosTab from "../components/configuracion/VehiculosTab";
+import PrivacidadTab from "../components/configuracion/PrivacidadTab";
 
 const TABS = [
   { key: "vehiculos", label: "Vehículos" },
   { key: "branding", label: "Marca y Login" },
   { key: "lightning", label: "Botón Rápido" },
   { key: "usuarios", label: "Usuarios" },
+  { key: "privacidad", label: "Privacidad" },
 ];
 
 const LIGHTNING_OPTIONS = [
@@ -25,6 +28,8 @@ const LIGHTNING_OPTIONS = [
 
 export default function Configuracion() {
   const { branding, loading: loadingBranding, updateBranding } = useBranding();
+  const legalSettings = useLegalSettings();
+  const legalMissing = legalSettings.loading ? 0 : countMissingLegal(legalSettings.legal);
   const { profiles, loading: loadingProfiles, updateRole, toggleStatus, updateName } = useProfiles();
   const { toasts, toast, remove } = useToasts();
 
@@ -131,22 +136,27 @@ export default function Configuracion() {
 
       <div>
         <h1 className="text-xl font-bold text-slate-900">Configuración</h1>
-        <p className="text-sm text-slate-500">Administra el branding, accesos rápidos y usuarios de la plataforma.</p>
+        <p className="text-sm text-slate-500">Administra el branding, accesos rápidos, usuarios y datos legales de la plataforma.</p>
       </div>
 
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit max-w-full overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`text-xs font-semibold px-4 py-2 rounded-lg transition ${tab === t.key ? "bg-white shadow text-slate-800" : "text-slate-500"}`}
+            className={`shrink-0 text-xs font-semibold px-4 py-2 rounded-lg transition ${tab === t.key ? "bg-white shadow text-slate-800" : "text-slate-500"}`}
           >
             {t.label}
+            {t.key === "privacidad" && legalMissing > 0 && (
+              <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-amber-500 align-middle" title="Faltan datos por completar" aria-label="Faltan datos por completar" />
+            )}
           </button>
         ))}
       </div>
 
       {tab === "vehiculos" && <VehiculosTab toast={toast} />}
+
+      {tab === "privacidad" && <PrivacidadTab legalSettings={legalSettings} toast={toast} />}
 
 
       {tab === "branding" && (
