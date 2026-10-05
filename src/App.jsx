@@ -32,6 +32,9 @@ const Combustible = lazy(() => import("./routes/Combustible"));
 const Historico = lazy(() => import("./routes/Historico"));
 const Auditoria = lazy(() => import("./routes/Auditoria"));
 const SuperAdmin = lazy(() => import("./routes/SuperAdmin"));
+// Páginas informativas públicas (se abren con o sin sesión).
+const Privacidad = lazy(() => import("./routes/Privacidad"));
+const PreguntasFrecuentes = lazy(() => import("./routes/PreguntasFrecuentes"));
 
 /**
  * Enrutamiento real de DrivePulse.
@@ -93,6 +96,8 @@ export default function App() {
       <Routes>
       <Route path="/login" element={<Login session={session} profile={profile} />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/privacidad" element={<Privacidad />} />
+      <Route path="/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
 
       <Route
         path="/super-admin"

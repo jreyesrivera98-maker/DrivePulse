@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Filter, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, Pencil, Plus } from "lucide-react";
 import { addDays, fmtShort, fmtDate, dayLabel, startOfWeek, todayISO } from "../../lib/dateUtils";
 
 export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAdmin, weekOffset, setWeekOffset, onDrop, onNewReservation, onSelectReservation }) {
@@ -68,7 +68,7 @@ export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAd
         <div>
           <h1 className="text-xl font-bold text-slate-900">Calendario de Reservas</h1>
           <p className="text-sm text-slate-500">
-            {isAdmin ? "Haz clic en una reserva para editarla o arrástrala para reprogramarla." : "Consulta la disponibilidad de la flotilla. Pasa el cursor (o toca) una reserva para ver su detalle."}
+            {isAdmin ? "Haz clic (o toca) una reserva para editarla o eliminarla, o arrástrala para reprogramarla." : "Consulta la disponibilidad de la flotilla. Pasa el cursor (o toca) una reserva para ver su detalle."}
           </p>
           <div className="flex items-center gap-3 mt-1.5">
             <span className="flex items-center gap-1 text-[10px] text-slate-400"><span className="w-2.5 h-2.5 rounded-sm bg-amber-200 border border-amber-300" /> Reserva</span>
@@ -167,18 +167,29 @@ export default function WeeklyCalendar({ vehicles, reservations, bitacoras, isAd
                           setHover(null);
                           setDragged(r.id);
                         }}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => {
                           setHover(null);
                           onSelectReservation?.(r);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelectReservation?.(r);
+                          }
+                        }}
                         onMouseEnter={(e) => showHover(e, r)}
                         onMouseLeave={() => setHover(null)}
-                        title={isAdmin ? "Clic para editar · arrastra para reprogramar" : undefined}
-                        className={`text-[10px] rounded-md px-1.5 py-1 mb-1 font-medium truncate bg-amber-100 text-amber-800 border border-amber-200 cursor-pointer hover:bg-amber-200 ${
+                        title={isAdmin ? "Clic para editar o eliminar · arrastra para reprogramar" : undefined}
+                        className={`flex items-center gap-1 text-[10px] rounded-md px-1.5 py-1 mb-1 font-medium bg-amber-100 text-amber-800 border border-amber-200 cursor-pointer hover:bg-amber-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${
                           isAdmin ? "active:cursor-grabbing" : ""
                         }`}
                       >
-                        {r.profiles?.name?.split(" ")[0] || "—"} · {r.destino || r.project || "Viaje"}
+                        <span className="truncate flex-1">
+                          {r.profiles?.name?.split(" ")[0] || "—"} · {r.destino || r.project || "Viaje"}
+                        </span>
+                        {isAdmin && <Pencil size={9} className="shrink-0 opacity-60" aria-label="Editar" />}
                       </div>
                     ))}
                     {dayUsage.map((b) => (

@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
-import { X, Calendar, Loader2, AlertTriangle, User, Car, Clock, MapPin, Briefcase, ShieldCheck } from "lucide-react";
+import { X, Calendar, Loader2, AlertTriangle, User, Car, Clock, MapPin, Briefcase, ShieldCheck, Trash2 } from "lucide-react";
 import { Field, inputCls } from "../ui/formPrimitives";
 import { fmtDate } from "../../lib/dateUtils";
 
 const hhmm = (t) => (t ? t.slice(0, 5) : "");
 
 /**
- * Admin  → formulario de edición completo.
+ * Admin  → formulario de edición completo + eliminación (con confirmación).
  * Resto  → ficha de solo lectura (en móvil es la forma de ver el
  *          detalle; en escritorio complementa el popover de hover).
  */
-export default function ReservationDetailModal({ reservation, onClose, vehicles, profiles, isAdmin, blockedUsers = {}, onSave }) {
+export default function ReservationDetailModal({ reservation, onClose, vehicles, profiles, isAdmin, blockedUsers = {}, onSave, onDelete }) {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!reservation) return;
@@ -29,6 +31,8 @@ export default function ReservationDetailModal({ reservation, onClose, vehicles,
       hora_regreso_estimada: hhmm(reservation.hora_regreso_estimada),
     });
     setError("");
+    setConfirmingDelete(false);
+    setDeleting(false);
   }, [reservation]);
 
   if (!reservation || !form) return null;
@@ -75,6 +79,22 @@ export default function ReservationDetailModal({ reservation, onClose, vehicles,
       setSaving(false);
     }
   };
+
+  const remove = async () => {
+    setError("");
+    setDeleting(true);
+    try {
+      await onDelete(reservation.id);
+      onClose();
+    } catch (err) {
+      setError(err.message || "No se pudo eliminar la reserva.");
+      setDeleting(false);
+    }
+  };
+
+  // Eliminar la reserva NO cierra un viaje ya iniciado (la bitácora es independiente).
+  const tripInProgress = blockedUsers[reservation.user_id]?.vehicleId === reservation.vehicle_id;
+  const busy = saving || deleting;
 
   const shell = (title, icon, body) => (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
@@ -186,18 +206,75 @@ export default function ReservationDetailModal({ reservation, onClose, vehicles,
       {error && <p className="text-xs bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-3 py-2 mb-4">{error}</p>}
 
       <div className="flex gap-2">
-        <button type="button" onClick={onClose} className="flex-1 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg py-2.5 text-sm font-semibold">
+        <button type="button" onClick={onClose} disabled={busy} className="flex-1 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg py-2.5 text-sm font-semibold disabled:opacity-60">
           Cancelar
         </button>
         <button
           type="submit"
-          disabled={saving || !!blockedInfo}
+          disabled={busy || !!blockedInfo}
           className="flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {saving && <Loader2 size={15} className="animate-spin" />}
           Guardar cambios
         </button>
       </div>
+
+      {onDelete && (
+        <div className="mt-5 pt-5 border-t border-slate-100">
+          {!confirmingDelete ? (
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setConfirmingDelete(true);
+              }}
+              disabled={busy}
+              className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold text-rose-600 border border-rose-200 hover:bg-rose-50 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+            >
+              <Trash2 size={15} /> Eliminar reserva
+            </button>
+          ) : (
+            <div role="alertdialog" aria-labelledby="del-title" className="rounded-xl border border-rose-200 bg-rose-50/60 p-4">
+              <p id="del-title" className="text-sm font-semibold text-rose-800">
+                ¿Eliminar esta reserva?
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-rose-700">
+                Se eliminará la reserva de <strong>{reservation.profiles?.name || "este colaborador"}</strong>
+                {vehicle ? <> en <strong>{vehicle.plate}</strong></> : null}{" "}
+                {reservation.start_date === reservation.end_date
+                  ? <>del <strong>{fmtDate(reservation.start_date)}</strong></>
+                  : <>del <strong>{fmtDate(reservation.start_date)}</strong> al <strong>{fmtDate(reservation.end_date)}</strong></>}
+                . Esta acción no se puede deshacer.
+              </p>
+              {tripInProgress && (
+                <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  Este colaborador tiene un viaje en curso con esta unidad. Eliminar la reserva no lo cierra: el check-in sigue pendiente.
+                </p>
+              )}
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  disabled={deleting}
+                  className="flex-1 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-lg py-2 text-sm font-semibold disabled:opacity-60"
+                >
+                  Conservar
+                </button>
+                <button
+                  type="button"
+                  onClick={remove}
+                  disabled={deleting}
+                  className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg py-2 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+                >
+                  {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                  {deleting ? "Eliminando…" : "Sí, eliminar"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </form>
   );
 }

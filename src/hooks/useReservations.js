@@ -73,8 +73,10 @@ export function useReservations() {
       }
       const { error } = await supabase.from("reservations").insert(payload);
       if (error) throw error;
+      // Realtime puede no estar activo en el proyecto: se refresca siempre.
+      await refetch();
     },
-    [hasOverlap]
+    [hasOverlap, refetch]
   );
 
   /** Reprograma (drag & drop): valida anti-empalme antes de escribir. */
@@ -83,13 +85,17 @@ export function useReservations() {
       if (hasOverlap(vehicleId, start, end, reservationId)) {
         throw new Error("No se puede mover la reserva: existe un empalme de horario");
       }
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("reservations")
         .update({ vehicle_id: vehicleId, start_date: start, end_date: end })
-        .eq("id", reservationId);
+        .eq("id", reservationId)
+        .select("id");
       if (error) throw error;
+      // RLS que no deja actualizar no devuelve error, solo 0 filas.
+      if (!data || data.length === 0) throw new Error("No tienes permiso para mover esta reserva.");
+      await refetch();
     },
-    [hasOverlap]
+    [hasOverlap, refetch]
   );
 
   /** Edición completa (solo admin, lo impone RLS): valida anti-empalme excluyendo la propia reserva. */
@@ -102,14 +108,22 @@ export function useReservations() {
       if (error) throw error;
       // RLS que no deja actualizar no devuelve error, solo 0 filas.
       if (!data || data.length === 0) throw new Error("No tienes permiso para editar esta reserva.");
+      await refetch();
     },
-    [hasOverlap]
+    [hasOverlap, refetch]
   );
 
-  const deleteReservation = useCallback(async (id) => {
-    const { error } = await supabase.from("reservations").delete().eq("id", id);
-    if (error) throw error;
-  }, []);
+  /** Eliminación definitiva (solo admin, lo impone RLS). */
+  const deleteReservation = useCallback(
+    async (id) => {
+      const { data, error } = await supabase.from("reservations").delete().eq("id", id).select("id");
+      if (error) throw error;
+      // Igual que en update: RLS (o una reserva ya borrada por otro admin) = 0 filas, sin error.
+      if (!data || data.length === 0) throw new Error("No se pudo eliminar: no tienes permiso o la reserva ya no existe.");
+      await refetch();
+    },
+    [refetch]
+  );
 
   return { reservations, loading, error, refetch, createReservation, moveReservation, updateReservation, deleteReservation, hasOverlap };
 }

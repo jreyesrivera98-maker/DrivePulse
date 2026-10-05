@@ -15,7 +15,7 @@ import { Loader2 } from "lucide-react";
 
 export default function Reservas({ profile }) {
   const { vehicles, loading: loadingVehicles, error: vehiclesError } = useVehicles();
-  const { reservations, loading: loadingReservations, error: reservationsError, createReservation, moveReservation, updateReservation } = useReservations();
+  const { reservations, loading: loadingReservations, error: reservationsError, createReservation, moveReservation, updateReservation, deleteReservation } = useReservations();
   const { bitacoras } = useBitacoras();
   const { profiles } = useProfiles();
   const { selectedVehicleId, setSelectedVehicleId, newReservationRequest } = useSelectedVehicle();
@@ -84,6 +84,11 @@ export default function Reservas({ profile }) {
     toast("Reserva actualizada correctamente.");
   };
 
+  const handleDelete = async (id) => {
+    await deleteReservation(id);
+    toast("Reserva eliminada.");
+  };
+
   const loading = loadingVehicles || loadingReservations;
   const loadError = vehiclesError || reservationsError;
 
@@ -131,6 +136,7 @@ export default function Reservas({ profile }) {
         isAdmin={isAdmin}
         blockedUsers={blockedUsers}
         onSave={handleUpdate}
+        onDelete={handleDelete}
       />
 
       <NewReservationModal

@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, ClipboardList, Fuel, Wrench, ShieldCheck,
-  FolderClock, Settings, Zap, LogOut, Building2,
+  FolderClock, Settings, Zap, LogOut, Building2, FileText,
 } from "lucide-react";
 import { signOut } from "../../lib/supabaseClient";
 import { useSelectedVehicle } from "../../contexts/SelectedVehicleContext";
@@ -179,6 +179,14 @@ export default function Sidebar({ profile, branding }) {
           className="xl:hidden w-full flex items-center justify-center rounded-xl py-2 mt-1 text-slate-500 hover:text-rose-400 hover:bg-white/5 transition"
         >
           <LogOut size={16} />
+        </button>
+        <button
+          onClick={() => navigate("/privacidad")}
+          title="Aviso de privacidad"
+          className="w-full flex items-center justify-center xl:justify-start gap-2 rounded-xl py-2 mt-1 xl:px-2.5 text-slate-500 hover:text-slate-200 hover:bg-white/5 transition"
+        >
+          <FileText size={15} />
+          <span className="hidden xl:block text-[11px]">Aviso de privacidad</span>
         </button>
       </div>
     </div>

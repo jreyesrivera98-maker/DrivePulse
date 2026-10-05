@@ -101,6 +101,14 @@ export default function Signup() {
               </div>
             )}
 
+            <p className="mb-3 text-center text-[11px] leading-relaxed text-slate-400">
+              Al continuar confirmas que leíste el{" "}
+              <Link to="/privacidad" target="_blank" rel="noopener noreferrer" className="text-teal-600 font-medium hover:underline">
+                Aviso de privacidad
+              </Link>
+              .
+            </p>
+
             <button type="submit" disabled={loading} className="w-full bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2.5 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
               {loading ? "Creando cuenta..." : "Continuar"}

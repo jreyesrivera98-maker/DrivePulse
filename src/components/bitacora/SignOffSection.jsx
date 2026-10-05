@@ -71,7 +71,10 @@ export default function SignOffSection({
       <p className="flex items-start justify-center gap-1.5 text-center text-[11px] leading-snug text-slate-400">
         <Lock size={11} className="mt-px shrink-0" />
         <span>
-          Al firmar se registran de forma inmutable la fecha, la hora y la ubicación <MapPin size={10} className="inline -mt-0.5" /> GPS del cierre.
+          Al firmar se registran de forma inmutable la fecha, la hora y la ubicación <MapPin size={10} className="inline -mt-0.5" /> GPS del cierre.{" "}
+          <a href="/privacidad#ubicacion" target="_blank" rel="noopener noreferrer" className="font-medium text-slate-500 underline underline-offset-2 hover:text-slate-700">
+            Aviso de privacidad
+          </a>
         </span>
       </p>
     </div>

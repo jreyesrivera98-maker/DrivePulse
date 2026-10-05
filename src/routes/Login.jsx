@@ -171,6 +171,10 @@ export default function Login({ profile, session }) {
           </div>
 
           <p className="text-center text-[11px] text-slate-500 lg:text-slate-400 mt-6">{branding.footer_text}</p>
+          <p className="text-center text-[11px] text-slate-500 lg:text-slate-400 mt-2 space-x-3">
+            <Link to="/privacidad" className="underline underline-offset-2 hover:text-teal-600">Aviso de privacidad</Link>
+            <Link to="/preguntas-frecuentes" className="underline underline-offset-2 hover:text-teal-600">Preguntas frecuentes</Link>
+          </p>
         </div>
       </div>
     </div>

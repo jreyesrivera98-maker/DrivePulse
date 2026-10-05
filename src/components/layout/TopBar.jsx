@@ -1,4 +1,5 @@
-import { LogOut } from "lucide-react";
+import { Link } from "react-router-dom";
+import { HelpCircle, LogOut } from "lucide-react";
 import { signOut } from "../../lib/supabaseClient";
 import AlertsPanel from "./AlertsPanel";
 import PulseMark from "../ui/PulseMark";
@@ -16,6 +17,14 @@ export default function TopBar({ profile, branding }) {
         <span className="capitalize">{profile?.role}</span>
       </div>
       <div className="flex items-center gap-1.5 ml-auto">
+        <Link
+          to="/preguntas-frecuentes"
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+          title="Preguntas frecuentes"
+          aria-label="Preguntas frecuentes"
+        >
+          <HelpCircle size={17} />
+        </Link>
         <AlertsPanel />
         <button
           onClick={() => signOut()}
